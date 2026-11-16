@@ -599,7 +599,7 @@ async function viewShipments() {
   $('#fltBtn').onclick = e => dropdown(e.currentTarget, SHIP_FILTERS, state.shipFilter, k => { state.shipFilter = k; state.shipQuery = ''; viewShipments(); }, 'اعرض');
   $('#sortBtn').onclick = e => dropdown(e.currentTarget, SORTS, state.shipSort || '', k => { state.shipSort = k; viewShipments(); }, 'رتّب حسب');
   $('#sBy').onclick = e => dropdown(e.currentTarget, SEARCH_BY, sb[0], k => { state.searchBy = k; const q = $('#sQ').value; viewShipments(); setTimeout(() => { $('#sQ').value = q; $('#sQ').focus(); }, 50); }, 'ابحث بـ');
-  $('#sForm').onsubmit = e => { e.preventDefault(); $('#sQ').blur(); state.shipQuery = $('#sQ').value.trim(); loadShipments(); };
+  $('#sForm').onsubmit = e => { e.preventDefault(); $('#sQ').blur(); const q = $('#sQ').value.trim(); if (shipmentIdFromUrl(q)) { $('#sQ').value = ''; return openFromUrl(q); } state.shipQuery = q; loadShipments(); };
   // Instant filter over what's already loaded (in the chosen field); Enter searches the whole portal.
   $('#sQ').oninput = e => {
     const q = normAr(e.target.value);
@@ -1518,7 +1518,7 @@ function viewMore() {
     <div class="list menu">${menuItem('refresh', 'المزامنة بين الموبايل والموقع', 'sync')}${menuItem('download', 'نسخ البيانات يدويًا', 'backup')}</div>
     <div class="section-title">الحساب</div>
     <div class="list menu">${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.4</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.5</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin(); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);

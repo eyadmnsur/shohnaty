@@ -253,6 +253,13 @@ const Hazem = {
     return out;
   },
 
+  // One shipment by its internal id (the number in ...shippings.php?action=edit&id=521524).
+  async byId(id) {
+    const s = parseShipmentPage(await this.page(`shippings.php?action=edit&id=${encodeURIComponent(id)}`));
+    if (!s) throw new Error('الشحنة دي مش موجودة في حسابك');
+    return s;
+  },
+
   // ---- Excel upload ------------------------------------------------------
   async uploadExcel(file) {
     const page = await this.page('excel_upload.php');
