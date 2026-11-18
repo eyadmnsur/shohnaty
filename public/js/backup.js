@@ -48,7 +48,7 @@ async function syncNow(quiet = true) {
   if (!Sync.on) return;
   try { await applySynced(await Sync.pull()); if (!quiet) toast('المزامنة تمت', 'ok'); } catch { if (!quiet) toast('تعذرت المزامنة — اتأكد من النت واللينك', 'err'); }
 }
-setInterval(() => { if (!document.hidden) syncNow(); }, 20000);
+setInterval(() => { if (!document.hidden) syncNow(); }, 45000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
 window.Capacitor?.Plugins?.App?.addListener?.('resume', () => syncNow());
 

@@ -184,6 +184,6 @@ function openKapsoInbox() {
 }
 
 // refresh the badge column + keep polling
-setInterval(() => Kapso.poll(), 20000);
+setInterval(() => Kapso.poll(), 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) Kapso.poll(); });
 window.Capacitor?.Plugins?.App?.addListener?.('resume', () => Kapso.poll());

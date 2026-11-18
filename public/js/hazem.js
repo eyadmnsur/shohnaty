@@ -28,8 +28,28 @@ const CATEGORY_LABEL = { active: 'قيد التشغيل', delivered: 'تم ال�
 
 const Hazem = {
   creds: null,
+  _q: [], _busy: 0, _cache: new Map(), _loginP: null, _loginAt: 0, _lockedUntil: 0,
 
-  async request(path, { method = 'GET', form = null, formData = null, ajax = false } = {}) {
+  // Everything goes through here: max 3 requests at once, identical GETs within 20 s share one answer.
+  async request(path, opts = {}) {
+    const get = (opts.method || 'GET') === 'GET';
+    if (this._lockedUntil > Date.now() && !/^login\.php/.test(path)) throw this.lockedError();
+    const key = get ? path : null;
+    if (key) { const c = this._cache.get(key); if (c && Date.now() - c.t < 20000) return { ...c.r }; }
+    if (!get) this._cache.clear();
+    await new Promise(ok => { if (this._busy < 3) { this._busy++; ok(); } else this._q.push(ok); });
+    try {
+      const r = await this._request(path, opts);
+      if (key && !this.isLoginPage(r.text)) { if (this._cache.size > 60) this._cache.clear(); this._cache.set(key, { t: Date.now(), r }); }
+      return r;
+    } finally { const next = this._q.shift(); if (next) next(); else this._busy--; }
+  },
+  lockedError() {
+    const mins = Math.max(1, Math.ceil((this._lockedUntil - Date.now()) / 60000));
+    const e = new Error(`حازم قفل الدخول مؤقتًا بسبب محاولات كتير. هيفتح بعد حوالي ${mins} دقيقة وبعدها التطبيق يكمّل لوحده.`); e.code = 'LOCKED'; return e;
+  },
+
+  async _request(path, { method = 'GET', form = null, formData = null, ajax = false } = {}) {
     const headers = {};
     let body;
     if (form) {
@@ -51,9 +71,14 @@ const Hazem = {
 
   // GET/POST a page; if the session expired, log in again once and retry.
   async page(path, opts = {}) {
+    const t0 = Date.now();
     let r = await this.request(path, opts);
     if (this.isLoginPage(r.text) && this.creds) {
-      await this.login(this.creds.email, this.creds.password);
+      // One login for all requests that found the session expired (parallel logins get the account locked).
+      if (this._loginAt < t0) {
+        if (!this._loginP) this._loginP = this.login(this.creds.email, this.creds.password).finally(() => { this._loginP = null; });
+        await this._loginP;
+      } else if (this._loginP) await this._loginP;
       r = await this.request(path, opts);
     }
     if (this.isLoginPage(r.text)) throw new Error('SESSION');
@@ -74,7 +99,11 @@ const Hazem = {
     try { data = JSON.parse(r.text.replace(/^﻿/, '').trim()); } catch {}
     if (!data) throw new Error('تعذر الاتصال بموقع الشحن');
     if (data.type === 'failed') throw new Error('رقم الموبايل أو كلمة المرور غير صحيحة');
-    if (data.type === 'locked') throw new Error(data.message || 'الحساب مقفول مؤقتًا');
+    if (data.type === 'locked') {
+      const m = String(data.message || '').match(/(\d+)\s*دقيق/);
+      this._lockedUntil = Date.now() + (m ? Number(m[1]) : 5) * 60000 + 5000;
+      throw this.lockedError();
+    }
     if (data.type !== 'success') throw new Error('خطأ في تسجيل الدخول');
     // The site registers a device token after login (same as its web page does).
     try {
@@ -86,6 +115,7 @@ const Hazem = {
       if (adminId) await this.request('add_user_token.php', { method: 'POST', ajax: true, form: { adminId, token, device: 'android', location: '' } });
     } catch {}
     this.creds = { email, password };
+    this._loginAt = Date.now(); this._lockedUntil = 0; this._cache.clear();
     return true;
   },
 

@@ -1,10 +1,10 @@
 {
- "version": 1795014146,
+ "version": 1795020261,
  "files": [
   {
    "path": "js/util.js",
-   "sha": "b5069018346273d8458e461cbae22d846b9738afa67f1d972685f69eb05d17f5",
-   "size": 2558
+   "sha": "a12b19b41f5fa1427b5c5e9f9dcf4f228c8c5b3d2dc17ed61b8a5ba67882f65d",
+   "size": 2733
   },
   {
    "path": "js/sync.js",
@@ -13,8 +13,8 @@
   },
   {
    "path": "js/hazem.js",
-   "sha": "9b4599ac78340937650f4ee2d0ceacdc0fd57ccf4850d6b23d2f19810f478068",
-   "size": 25951
+   "sha": "fc3293e19d52e203e96725c2c4774516b53a05a48b922cb933412f28fe29de34",
+   "size": 27746
   },
   {
    "path": "js/matcher.js",
@@ -63,7 +63,7 @@
   },
   {
    "path": "js/kapso.js",
-   "sha": "e2f6f46734686fb5b22e7657118a3efa271ab360948449fc23d2645102832745",
+   "sha": "e8977ea0464c1902624dd0deaf50ebb3850b3d3f3f1cc0dc024f1597acd110ea",
    "size": 16404
   },
   {
@@ -83,18 +83,18 @@
   },
   {
    "path": "js/backup.js",
-   "sha": "8814445d5a6bc4d37a7fca5069c627311cb18d39b341ed47831dfcab9cd55eb7",
+   "sha": "e235ed7cecd8e3a6cd111ede6ebf7c0f51c5ab94a88e3e3b121e5de0175a84f3",
    "size": 5700
   },
   {
    "path": "js/autopaid.js",
-   "sha": "91e0dbf810f353370e7a30eaf0e588bba3cac9364ca750f4ff989d85f6929577",
+   "sha": "4d950beb1b9ba6d3789df5fa7486a36b924ae7f1da43aa374339e1015f974d29",
    "size": 3046
   },
   {
    "path": "js/app.js",
-   "sha": "973df3b62857b78d2e0672fe685b39abadc2feb4121b8a6dd3df44454b2ca112",
-   "size": 137733
+   "sha": "9d7233c644fa870e9cd49234e5c3b979a63f1327ac6e69eaa8b819be9108f03a",
+   "size": 137734
   }
  ],
  "css": {

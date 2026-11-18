@@ -37,7 +37,10 @@ const money = n => {
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+let _lastToast = { m: '', t: 0 };
 function toast(msg, type = '') {
+  if (_lastToast.m === msg && Date.now() - _lastToast.t < (type === 'err' ? 15000 : 3000)) return;
+  _lastToast = { m: msg, t: Date.now() };
   const el = document.createElement('div');
   el.className = 'toast ' + type;
   el.textContent = msg;

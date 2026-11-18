@@ -43,6 +43,6 @@ async function autoMarkPaid(manual = false) {
 }
 const autoPaidTick = () => { if (!document.hidden) autoMarkPaid().catch(() => {}); };
 setTimeout(autoPaidTick, 6000);
-setInterval(autoPaidTick, 10 * 60000);
+setInterval(autoPaidTick, 20 * 60000);
 document.addEventListener('visibilitychange', autoPaidTick);
 window.Capacitor?.Plugins?.App?.addListener?.('resume', autoPaidTick);
