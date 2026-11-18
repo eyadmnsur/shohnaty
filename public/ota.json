@@ -1,5 +1,5 @@
 {
- "version": 1795013176,
+ "version": 1795014146,
  "files": [
   {
    "path": "js/util.js",
@@ -63,8 +63,8 @@
   },
   {
    "path": "js/kapso.js",
-   "sha": "7222703b88006dbffad8a2c7b7a16b2483538b3615b75dad5ccc210c2e545787",
-   "size": 14408
+   "sha": "e2f6f46734686fb5b22e7657118a3efa271ab360948449fc23d2645102832745",
+   "size": 16404
   },
   {
    "path": "js/deeplink.js",
@@ -93,7 +93,7 @@
   },
   {
    "path": "js/app.js",
-   "sha": "33e6c3313c4d5cb75daba9226f50d1fb6e3dd7064aea5b70721640264c2ad5ff",
+   "sha": "973df3b62857b78d2e0672fe685b39abadc2feb4121b8a6dd3df44454b2ca112",
    "size": 137733
   }
  ],

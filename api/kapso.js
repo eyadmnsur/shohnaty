@@ -130,9 +130,29 @@ async function webhook(req, res) {
 
 // ---------- operations for the app ----------
 async function setup(req, res, body) {
-  const apiKey = String(body.apiKey || '').trim(), phoneNumberId = String(body.phoneNumberId || '').trim();
-  if (!apiKey || !/^\d{6,20}$/.test(phoneNumberId)) return json(res, 400, { ok: false, error: 'اكتب الـ API Key و Phone Number ID (أرقام)' });
-  const cfg = { apiKey, phoneNumberId };
+  const apiKey = String(body.apiKey || '').trim();
+  if (!apiKey) return json(res, 400, { ok: false, error: 'اكتب الـ API Key' });
+  let typed = String(body.phoneNumberId || body.phone || '').replace(/\D/g, '');
+  const cfg = { apiKey, phoneNumberId: '' };
+  // Phone Number ID is optional: a WhatsApp number (01…/20…) is matched against the project's numbers; empty = the only number.
+  const looksLikePhone = typed && (typed.startsWith('0') || typed.length <= 13);
+  if (!typed || looksLikePhone) {
+    const lr = await kapso(cfg, '/platform/v1/whatsapp/phone_numbers?per_page=50');
+    if (!lr.ok) return json(res, 400, { ok: false, error: lr.status === 401 || lr.status === 403 ? 'الـ API Key غلط' : 'كابسو رفض الطلب: ' + errText(lr) });
+    const rows = (Array.isArray(lr.data) ? lr.data : (lr.data && lr.data.data)) || [];
+    if (!rows.length) return json(res, 400, { ok: false, error: 'مفيش رقم واتساب مربوط في حساب كابسو ده. اربط الرقم الأول من لوحة كابسو' });
+    const digits = x => String(x || '').replace(/\D/g, '');
+    let pick = null;
+    if (!typed) pick = rows.length === 1 ? rows[0] : null;
+    else { const want = phoneIntl(typed) || typed; pick = rows.find(r => digits(r.display_phone_number_normalized || r.display_phone_number) === want) || null; }
+    if (!pick) {
+      const list = rows.map(r => (r.display_phone_number || r.display_phone_number_normalized || '') + ' — ' + (r.verified_name || r.name || '')).join(' | ');
+      return json(res, 400, { ok: false, error: (typed ? 'الرقم ده مش مربوط بالمفتاح ده.' : 'فيه أكتر من رقم، اكتب رقم واتساب اللي عايزه.') + ' الأرقام المربوطة: ' + list });
+    }
+    typed = String(pick.phone_number_id);
+  }
+  if (!/^\d{6,20}$/.test(typed)) return json(res, 400, { ok: false, error: 'Phone Number ID لازم يكون أرقام بس' });
+  const phoneNumberId = typed; cfg.phoneNumberId = phoneNumberId;
   const info = await kapso(cfg, `/platform/v1/whatsapp/phone_numbers/${phoneNumberId}`);
   if (!info.ok) return json(res, 400, { ok: false, error: info.status === 401 || info.status === 403 ? 'الـ API Key غلط' : info.status === 404 ? 'Phone Number ID مش موجود في حسابك' : 'كابسو رفض الطلب: ' + errText(info) });
   const d = info.data && (info.data.data || info.data);

@@ -117,17 +117,34 @@ async function openKapsoSettings() {
   const st = { PENDING: ['⏳ مستني مراجعة ميتا', 'attention'], APPROVED: ['✅ معتمد وجاهز', 'success'], REJECTED: ['❌ ميتا رفضه', 'critical'], MISSING: ['مش موجود', 'warning'], ERROR: ['تعذر الفحص', 'warning'], DISABLED: ['⛔ موقوف', 'critical'], UNKNOWN: ['؟', ''] };
   let showForm = false;
   const paint = async () => {
+    if (!(await Kapso.conf())) {
+      body.innerHTML = `<div class="banner warning small" style="display:block">كابسو بيشتغل من <b>سيرفر موقعك</b>، فلازم الأول تربط التطبيق بالموقع (مرة واحدة). اكتب كلمة سر الموقع:</div>
+        <div class="card card-pad"><div class="field"><label>لينك الموقع</label><input id="kpSite" class="ltr" inputmode="url" value="https://shohnaty5.vercel.app"></div>
+        <div class="field"><label>كلمة سر الموقع</label><input id="kpSitePw" type="password" autocomplete="off"></div>
+        <button class="btn primary block" id="kpSiteGo">ربط بالموقع</button><div id="kpSiteRes" class="small" style="margin-top:10px"></div></div>`;
+      $('#kpSiteGo', sh.el).onclick = async () => {
+        const btn = $('#kpSiteGo', sh.el), url = $('#kpSite', sh.el).value.trim().replace(/\/+$/, ''), pw = $('#kpSitePw', sh.el).value;
+        if (!/^https:\/\//.test(url) || !pw) return toast('اكتب اللينك وكلمة السر', 'err');
+        btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+        try { await applySynced(await Sync.enable(url, pw)); toast('اتربط بالموقع ✅', 'ok'); await paint(); }
+        catch (e) { await Sync.disable(); btn.disabled = false; btn.textContent = 'ربط بالموقع'; $('#kpSiteRes', sh.el).innerHTML = `<span style="color:var(--critical)">${/401/.test(e.message) ? 'كلمة السر غلط' : /503/.test(e.message) ? 'قاعدة البيانات مش متربطة' : 'تعذر الاتصال بالموقع'}</span>`; }
+      };
+      return;
+    }
     await Kapso.refresh();
     if (!Kapso.on || showForm) {
       body.innerHTML = `
         <div class="banner info small" style="display:block">ربط رقم واتساب Business (من كابسو) بالتطبيق: التأكيدات بتتبعت أوتوماتيك بزرارين <b>تأكيد الطلب / إلغاء الطلب</b>، وردّ العميل بيتنفّذ لوحده. الـ API Key بيتخزّن <b>مشفّر على سيرفر موقعك</b> بس، مش على الموبايل.</div>
         <div class="card card-pad">
           <div class="field"><label>Kapso API Key</label><input id="kpKey" class="ltr" type="password" autocomplete="off" placeholder="من Kapso ← Integrations ← API keys"></div>
-          <div class="field"><label>Phone Number ID</label><input id="kpPid" class="ltr" inputmode="numeric" placeholder="من Kapso ← WhatsApp ← Phone numbers"></div>
+          <div class="field"><label>رقم واتساب Business (اختياري)</label><input id="kpPid" class="ltr" inputmode="numeric" placeholder="01XXXXXXXXX — سيبه فاضي لو عندك رقم واحد"></div>
+          <div class="tiny" style="margin:-4px 2px 8px">مش لازم Phone Number ID: التطبيق بيدوّر على الرقم لوحده من حسابك في كابسو.</div>
           <button class="btn primary block" id="kpGo">ربط وتفعيل</button><div id="kpRes" class="small" style="margin-top:10px"></div>
         </div>`;
       $('#kpGo', sh.el).onclick = async () => {
-        const btn = $('#kpGo', sh.el); btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+        const btn = $('#kpGo', sh.el);
+        if (!$('#kpKey', sh.el).value.trim()) return toast('اكتب الـ API Key', 'err');
+        btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
         try {
           const r = await Kapso.call('setup', 'POST', { apiKey: $('#kpKey', sh.el).value.trim(), phoneNumberId: $('#kpPid', sh.el).value.trim() });
           toast(`اتربط ✅${r.name ? ' — ' + r.name : ''}`, 'ok'); showForm = false; await paint();

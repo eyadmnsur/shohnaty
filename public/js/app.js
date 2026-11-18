@@ -1537,7 +1537,7 @@ function viewMore() {
     <div class="list menu">${menuItem('refresh', 'المزامنة بين الموبايل والموقع', 'sync')}${menuItem('download', 'نسخ البيانات يدويًا', 'backup')}</div>
     <div class="section-title">الحساب</div>
     <div class="list menu">${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.8</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.9</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin(); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
