@@ -70,6 +70,8 @@ const Store = {
 
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
 
+// Authorization header for the website's server (Arabic / special characters are sent base64-encoded).
+const siteAuth = pw => 'Bearer b64.' + btoa(unescape(encodeURIComponent(String(pw ?? '').trim())));
 // "٠١٠…" typed on an Arabic keyboard -> "010…"; invisible direction marks removed.
 const normDigits = x => String(x ?? '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '');
 // Eye button on every password field (login, Shopify keys, Kapso key, site password…).

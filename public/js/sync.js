@@ -16,7 +16,7 @@ const Sync = (() => {
   async function conf() {
     if (window.SYNC_BASE) return { base: window.SYNC_BASE, headers: {} };
     const c = await J('sync_cfg', null);
-    return c && c.url && c.password ? { base: c.url.replace(/\/+$/, ''), headers: { Authorization: 'Bearer ' + c.password } } : null;
+    return c && c.url && c.password ? { base: c.url.replace(/\/+$/, ''), headers: { Authorization: siteAuth(c.password) } } : null;
   }
   async function call(method, body) {
     const r = await fetch(cfg.base + '/api/store', { method, cache: 'no-store', credentials: 'include', headers: { ...cfg.headers, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });

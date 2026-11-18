@@ -1,15 +1,15 @@
 {
- "version": 1795044573,
+ "version": 1795045280,
  "files": [
   {
    "path": "js/util.js",
-   "sha": "f4c96768b6571ecab4c3d10a472dd556c7ad8de5c54bffed114db6b6068840ba",
-   "size": 3961
+   "sha": "db797bc5a2f84114353448929f02611e6dc3e3e5a298de7e42a066c0782c13c4",
+   "size": 4165
   },
   {
    "path": "js/sync.js",
-   "sha": "a4ebfe315219d7c40c0bd7295a779211c3b987c3b0f94c6a533d2691529dcab0",
-   "size": 4579
+   "sha": "4b2e7247abbd0dc4ac1ad3612a559cfd00f27b91020f97d47da941c623f5ab2d",
+   "size": 4577
   },
   {
    "path": "js/hazem.js",
@@ -63,8 +63,8 @@
   },
   {
    "path": "js/kapso.js",
-   "sha": "e8977ea0464c1902624dd0deaf50ebb3850b3d3f3f1cc0dc024f1597acd110ea",
-   "size": 16404
+   "sha": "1b829b894b8418a701b35f11d577ec974d7651fae202a2689e779ae971e05e24",
+   "size": 16402
   },
   {
    "path": "js/deeplink.js",
@@ -93,7 +93,7 @@
   },
   {
    "path": "js/app.js",
-   "sha": "40927ce328a6a819ace59804290d3e408741d26ac90d1499c4c39c31a51dcd1f",
+   "sha": "efcc92dc421ed24c24a8bc06dfa1c1d9bfc87bf8b03d1ec2fcbd16aa9149a488",
    "size": 141245
   }
  ],

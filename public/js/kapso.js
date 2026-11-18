@@ -6,7 +6,7 @@ const Kapso = {
   async conf() {
     if (window.SYNC_BASE) return { base: window.SYNC_BASE, headers: {} };
     const c = await Sync.config?.();
-    return c && c.url && c.password ? { base: c.url.replace(/\/+$/, ''), headers: { Authorization: 'Bearer ' + c.password } } : null;
+    return c && c.url && c.password ? { base: c.url.replace(/\/+$/, ''), headers: { Authorization: siteAuth(c.password) } } : null;
   },
   async call(path, method = 'GET', body) {
     const c = await this.conf(); if (!c) throw new Error('فعّل المزامنة مع الموقع الأول (المزيد ← المزامنة)');
