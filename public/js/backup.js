@@ -59,7 +59,7 @@ function openSyncSetup() {
     <button class="btn block" id="syNow">🔄 زامن دلوقتي</button>` : `
     <div class="banner info small" style="display:block">اكتب لينك موقعك وكلمة سر التطبيق، وبعدها أي حاجة تتغيّر هنا بتظهر على الموقع والعكس. بيانات الموبايل الحالية بتترفع للموقع أول مرة.</div>
     <div class="card card-pad">
-      <div class="field"><label>لينك الموقع</label><input id="syUrl" class="ltr" placeholder="https://اسم-موقعك.vercel.app" inputmode="url"></div>
+      <div class="field"><label>لينك الموقع</label><input id="syUrl" class="ltr" placeholder="https://اسم-موقعك.vercel.app" inputmode="url" value="https://shohnaty5.vercel.app"></div>
       <div class="field"><label>كلمة سر التطبيق</label><input id="syPw" type="password"></div>
       <div id="syState" class="small muted"></div>
     </div>`, web ? [] : [['إيقاف', async () => { await Sync.disable(); toast('المزامنة اتوقفت'); sh.close(); }], ['تفعيل ومزامنة', activate, 'primary']]);

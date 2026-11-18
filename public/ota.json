@@ -1,0 +1,105 @@
+{
+ "version": 1795013176,
+ "files": [
+  {
+   "path": "js/util.js",
+   "sha": "b5069018346273d8458e461cbae22d846b9738afa67f1d972685f69eb05d17f5",
+   "size": 2558
+  },
+  {
+   "path": "js/sync.js",
+   "sha": "ae20a3a0542b5ef80420ee6d5a90cdc65805437aa89af8b5840886e5f781413e",
+   "size": 4399
+  },
+  {
+   "path": "js/hazem.js",
+   "sha": "9b4599ac78340937650f4ee2d0ceacdc0fd57ccf4850d6b23d2f19810f478068",
+   "size": 25951
+  },
+  {
+   "path": "js/matcher.js",
+   "sha": "2eb23b608904751dcb9ea38bf18a82cbd561a36a84a486e307204d9255598943",
+   "size": 2779
+  },
+  {
+   "path": "js/shopify.js",
+   "sha": "a47fba841ba3b01170e71b3d60ee1be9ca26a894d6c033390550153bc2741653",
+   "size": 11021
+  },
+  {
+   "path": "js/ai.js",
+   "sha": "86f309f49d1cd1b49b6dff5e4b1bc76771f05f91a762c8cf9ddefd6114ce5262",
+   "size": 6431
+  },
+  {
+   "path": "js/aiproviders.js",
+   "sha": "e55500e64a225a160ee7769351dfe88b6bfad8a28c5ed48c20cd0f5b9e5035a1",
+   "size": 8915
+  },
+  {
+   "path": "js/waorders.js",
+   "sha": "0cad784c416e95731344b7a822006fcea5c54121989f9314e78cd7ed250d15db",
+   "size": 19730
+  },
+  {
+   "path": "js/waflow.js",
+   "sha": "eae7dd89387e81d8ffd42722e78395baf92d16770624a12380bd9efdb9bc3029",
+   "size": 13746
+  },
+  {
+   "path": "js/report.js",
+   "sha": "63675fc72d4d79fe6e4e6ed6f26afdcf6886714adff9b1f817bb7c7688b7e0f9",
+   "size": 12308
+  },
+  {
+   "path": "js/returnsreport.js",
+   "sha": "f666e45740964b40fe3c96fb0957c02af9138c87d3e54dbcae13a4410e0c3b77",
+   "size": 12819
+  },
+  {
+   "path": "js/shoporders.js",
+   "sha": "1cdc393f020aa6a76b1e5dad9b326c97224f6cb68e7e7a313f7eccf19922d658",
+   "size": 11725
+  },
+  {
+   "path": "js/kapso.js",
+   "sha": "7222703b88006dbffad8a2c7b7a16b2483538b3615b75dad5ccc210c2e545787",
+   "size": 14408
+  },
+  {
+   "path": "js/deeplink.js",
+   "sha": "53dd0c6e86faed2bbda4043eb64e6c883628f6c9bca4d835108cefca08e6dd12",
+   "size": 1134
+  },
+  {
+   "path": "js/sheetcheck.js",
+   "sha": "5984a908ed4eb40d51f8e1c1d7951934eaee761cfda83c531e1608ce7e00cc3c",
+   "size": 4911
+  },
+  {
+   "path": "js/alerts.js",
+   "sha": "c377c296567230f627d3145deaed3287aee19d60168c265a14a3d5dacda57673",
+   "size": 6726
+  },
+  {
+   "path": "js/backup.js",
+   "sha": "8814445d5a6bc4d37a7fca5069c627311cb18d39b341ed47831dfcab9cd55eb7",
+   "size": 5700
+  },
+  {
+   "path": "js/autopaid.js",
+   "sha": "91e0dbf810f353370e7a30eaf0e588bba3cac9364ca750f4ff989d85f6929577",
+   "size": 3046
+  },
+  {
+   "path": "js/app.js",
+   "sha": "33e6c3313c4d5cb75daba9226f50d1fb6e3dd7064aea5b70721640264c2ad5ff",
+   "size": 137733
+  }
+ ],
+ "css": {
+  "path": "css/app.css",
+  "sha": "e0e292c3e02d14c2eef5ba474106470bcabf8167438bf88292880995932487b3",
+  "size": 20396
+ }
+}

@@ -1,3 +1,11 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>شحناتي</title>
-<style>body{margin:0;background:#1a1a1a;color:#fff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px}button{margin-top:16px;padding:12px 24px;font-size:16px;border:0;border-radius:10px;background:#fff;color:#1a1a1a}</style></head>
-<body><div><div style="font-size:44px">📡</div><h2>مفيش اتصال بالإنترنت</h2><p style="opacity:.7">شحناتي بتشتغل من موقعك، اتأكد من النت وحاول تاني.</p><button onclick="history.back();location.reload()">إعادة المحاولة</button></div></body></html>
+<style>body{margin:0;background:#1a1a1a;color:#fff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px}button{margin:6px;padding:12px 22px;font-size:16px;border:0;border-radius:10px;background:#fff;color:#1a1a1a}.b2{background:#333;color:#fff}pre{direction:ltr;text-align:left;background:#000;color:#9fe;border-radius:10px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-width:90vw}</style></head>
+<body><div><div style="font-size:44px">📡</div><h2>التطبيق مقدرش يفتح الموقع</h2><p style="opacity:.7">لو النت شغال، ابعت الكلام اللي تحت للمطوّر.</p>
+<pre id="d">بيفحص…</pre>
+<button onclick="location.href='https://shohnaty5.vercel.app/'">إعادة المحاولة</button><button class="b2" onclick="window.open('https://shohnaty5.vercel.app/','_system')">فتح في المتصفح</button></div>
+<script>
+const q=new URLSearchParams(location.search); const out=[];
+out.push('سبب الفشل: '+(q.get('why')||'غير معروف')); out.push('الرابط: '+(q.get('url')||'-')); out.push('online: '+navigator.onLine);
+const show=()=>document.getElementById('d').textContent=out.join('\n'); show();
+const t0=Date.now(); fetch('https://shohnaty5.vercel.app/manifest.webmanifest',{cache:'no-store'}).then(r=>{out.push('فحص الاتصال: وصل ('+r.status+') في '+(Date.now()-t0)+'ms');show();}).catch(e=>{out.push('فحص الاتصال: فشل — '+e.message);show();});
+</script></body></html>
