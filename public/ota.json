@@ -1,15 +1,15 @@
 {
- "version": 1795020261,
+ "version": 1795044014,
  "files": [
   {
    "path": "js/util.js",
-   "sha": "a12b19b41f5fa1427b5c5e9f9dcf4f228c8c5b3d2dc17ed61b8a5ba67882f65d",
-   "size": 2733
+   "sha": "f4c96768b6571ecab4c3d10a472dd556c7ad8de5c54bffed114db6b6068840ba",
+   "size": 3961
   },
   {
    "path": "js/sync.js",
-   "sha": "ae20a3a0542b5ef80420ee6d5a90cdc65805437aa89af8b5840886e5f781413e",
-   "size": 4399
+   "sha": "a4ebfe315219d7c40c0bd7295a779211c3b987c3b0f94c6a533d2691529dcab0",
+   "size": 4579
   },
   {
    "path": "js/hazem.js",
@@ -93,13 +93,13 @@
   },
   {
    "path": "js/app.js",
-   "sha": "9d7233c644fa870e9cd49234e5c3b979a63f1327ac6e69eaa8b819be9108f03a",
-   "size": 137734
+   "sha": "9c6c7a066cc4a5f39a503e5070c15e1982b4f8fa26c5aba0b5065748e5220bda",
+   "size": 140990
   }
  ],
  "css": {
   "path": "css/app.css",
-  "sha": "e0e292c3e02d14c2eef5ba474106470bcabf8167438bf88292880995932487b3",
-  "size": 20396
+  "sha": "76296dd6f951d2dc964699805f7d6486787b0eb86c73a173f77074d26799a415",
+  "size": 20692
  }
 }

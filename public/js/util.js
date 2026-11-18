@@ -69,3 +69,20 @@ const Store = {
 };
 
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
+
+// "٠١٠…" typed on an Arabic keyboard -> "010…"; invisible direction marks removed.
+const normDigits = x => String(x ?? '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '');
+// Eye button on every password field (login, Shopify keys, Kapso key, site password…).
+(() => {
+  const wrap = el => {
+    if (el.dataset.eye || !el.parentNode) return; el.dataset.eye = '1';
+    const w = document.createElement('span'); w.className = 'pw-wrap';
+    el.parentNode.insertBefore(w, el); w.appendChild(el);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pw-eye'; b.setAttribute('aria-label', 'إظهار / إخفاء'); b.textContent = '👁';
+    b.onclick = () => { const show = el.type === 'password'; el.type = show ? 'text' : 'password'; b.textContent = show ? '🙈' : '👁'; };
+    w.appendChild(b);
+  };
+  const scan = () => document.querySelectorAll('input[type=password]').forEach(wrap);
+  new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener('DOMContentLoaded', scan);
+})();

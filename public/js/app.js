@@ -44,7 +44,9 @@ const state = {
   state.overrides = await Store.get('overrides', {});
   await Shopify.load();
   const creds = await Store.get('creds');
+  const lp = await loginPrefs();
   if (!creds) return renderLogin();
+  if (lp.ask) return renderLogin('', creds);        // "ask me every time": form pre-filled, one tap to enter
   Hazem.creds = creds;
   renderShell();
   askNotifyPermission();
@@ -52,15 +54,20 @@ const state = {
 })();
 
 // ---------- Login ----------
-function renderLogin(err = '') {
+// Per device: remember the login (default yes) / ask for it on every start (default no).
+async function loginPrefs() { return { remember: true, ask: false, ...(await Store.get('login_prefs', {})) }; }
+async function renderLogin(err = '', prefill = null) {
+  const lp = await loginPrefs();
+  if (!prefill && lp.remember) prefill = await Store.get('creds', null);
   $('#app').innerHTML = `
   <div class="login">
     <div class="brand"><div class="logo">${ic('truck')}</div><div><h1>شحناتي</h1><div class="muted small">متابعة شحنات حازم حلان وربطها بمتجرك</div></div></div>
     <div class="card card-pad">
       ${err ? `<div class="banner critical">${ic('alert', 'width="18"')}<div>${esc(err)}</div></div>` : ''}
       <form id="loginForm">
-        <div class="field"><label>رقم الموبايل أو البريد الإلكتروني</label><input name="email" inputmode="tel" autocomplete="username" required class="ltr" style="text-align:right"></div>
-        <div class="field"><label>كلمة المرور</label><input name="password" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label>رقم الموبايل أو البريد الإلكتروني</label><input name="email" inputmode="tel" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required class="ltr" style="text-align:right" value="${esc(prefill?.email || '')}"></div>
+        <div class="field"><label>كلمة المرور</label><input name="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required value="${esc(prefill?.password || '')}"></div>
+        <label class="row" style="gap:10px;align-items:center;margin:4px 0 12px"><input type="checkbox" name="remember" class="switch" ${lp.remember ? 'checked' : ''}><span class="small">احتفظ ببيانات الدخول على الجهاز ده</span></label>
         <button class="btn primary block" id="loginBtn">تسجيل الدخول</button>
       </form>
     </div>
@@ -70,12 +77,15 @@ function renderLogin(err = '') {
     e.preventDefault();
     const fd = new FormData(e.target), btn = $('#loginBtn');
     btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+    const remember = !!fd.get('remember'), entered = { email: normDigits(clean(fd.get('email'))), password: normDigits(fd.get('password')) };
     try {
-      await Hazem.login(clean(fd.get('email')), fd.get('password'));
-      await Store.set('creds', Hazem.creds);
+      await Hazem.login(entered.email, entered.password);
+      const p = await loginPrefs(); await Store.set('login_prefs', { ...p, remember });
+      if (remember) await Store.set('creds', Hazem.creds); else await Store.del('creds');
       renderShell();
       askNotifyPermission();
-    } catch (er) { renderLogin(er.message); }
+      Kapso.init().catch(() => {});
+    } catch (er) { renderLogin(er.code === 'LOCKED' ? er.message : /غير صحيحة/.test(er.message) ? 'حازم قال إن البيانات غلط. اتأكد من الرقم (من غير مسافات) والباسورد، وجرّب زرار 👁 تشوف اللي كتبته.' : er.message, remember ? entered : null); }
   };
 }
 
@@ -106,7 +116,8 @@ function setTitle(t, actions = []) {
 }
 function handleErr(e) {
   console.error(e);
-  if (e.message === 'SESSION') { toast('انتهت الجلسة، سجّل دخول تاني', 'err'); Store.del('creds'); return renderLogin(); }
+  if (/غير صحيحة/.test(e.message) && Hazem.creds) return renderLogin('حازم قال إن البيانات المحفوظة غلط. اكتبها تاني (جرّب زرار 👁).', Hazem.creds);
+  if (e.message === 'SESSION') return renderLogin('الجلسة انتهت وتعذر الدخول تلقائيًا. دوس «تسجيل الدخول» (بياناتك محفوظة).', Hazem.creds);
   toast(/Failed to fetch|Network|timeout/i.test(e.message) ? 'مفيش اتصال بالإنترنت' : e.message, 'err');
 }
 const loading = () => '<div class="spinner"></div>';
@@ -1535,13 +1546,22 @@ function viewMore() {
     <div class="list menu">${menuItem('bell', 'مركز التنبيهات', 'center')}${menuItem('alert', 'إعدادات التنبيهات (مرتجع، تأجيل، دفع أقل، أوردرات…)', 'alerts')}</div>
     <div class="section-title">البيانات والمزامنة</div>
     <div class="list menu">${menuItem('refresh', 'المزامنة بين الموبايل والموقع', 'sync')}${menuItem('download', 'نسخ البيانات يدويًا', 'backup')}</div>
-    <div class="section-title">الحساب</div>
-    <div class="list menu">${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.10</p>`;
+    <div class="section-title">الحساب والدخول (على الجهاز ده)</div>
+    <div class="list menu">
+      <label class="item" style="align-items:center"><span class="grow"><b>احتفظ ببيانات الدخول لحازم</b><div class="tiny">التطبيق يدخل لوحده ومايطلبهاش تاني</div></span><input type="checkbox" id="lpRemember" class="switch"></label>
+      <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
+      ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.11</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
-    logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin(); } };
+    logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
   Store.get('wa_to_shopify', true).then(v => { const t = $('#waShopToggle'); if (!t) return; t.checked = v !== false; t.onchange = () => Store.set('wa_to_shopify', t.checked); });
+  loginPrefs().then(lp => {
+    const r = $('#lpRemember'), a = $('#lpAsk'); if (!r) return; r.checked = lp.remember; a.checked = lp.ask;
+    r.onchange = async () => { const p = await loginPrefs(); await Store.set('login_prefs', { ...p, remember: r.checked });
+      if (r.checked) { if (Hazem.creds) await Store.set('creds', Hazem.creds); toast('هيتحفظ'); } else { await Store.del('creds'); toast('اتمسحت من الجهاز ده (لسه داخل دلوقتي)'); } };
+    a.onchange = async () => { const p = await loginPrefs(); await Store.set('login_prefs', { ...p, ask: a.checked }); if (a.checked && !r.checked) { r.checked = true; r.onchange(); } toast(a.checked ? 'هيطلب الدخول كل مرة' : 'مش هيطلب'); };
+  });
   Store.get('auto_paid', true).then(v => { const t = $('#autoPaidToggle'); if (!t) return; t.checked = v !== false; t.onchange = async () => { await Store.set('auto_paid', t.checked); toast(t.checked ? 'اتفعّل — هيتعلّم مدفوع تلقائي' : 'اتقفل'); if (t.checked) autoMarkPaid(true); }; });
 }
 const menuItem = (icon, label, k) => `<button class="item" data-m="${k}"><span class="ico">${ic(icon)}</span><span class="grow" style="font-weight:600">${label}</span>${ic('chev', 'class="chev"')}</button>`;

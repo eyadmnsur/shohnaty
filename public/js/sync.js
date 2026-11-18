@@ -1,7 +1,7 @@
 // Keeps app data identical on every device (phone app + website) through the app's own server.
 // Local copy stays the source for the UI; every change is pushed, and other devices' changes are pulled.
 const Sync = (() => {
-  const LOCAL_ONLY = new Set(['device_token', 'sync_cfg', 'sync_t', 'sync_dirty', 'alerts_log', 'alerts_read_at', 'status_seen', 'pay_seen', 'shopify_last_check', 'open_alerts', 'reasons', 'kapso_since', 'kapso_msgs']);
+  const LOCAL_ONLY = new Set(['device_token', 'sync_cfg', 'sync_t', 'sync_dirty', 'alerts_log', 'alerts_read_at', 'status_seen', 'pay_seen', 'shopify_last_check', 'open_alerts', 'reasons', 'kapso_since', 'kapso_msgs', 'login_prefs']);
   const P = () => window.Capacitor?.Plugins?.Preferences;
   const raw = {
     async get(k) { try { return P() ? (await P().get({ key: k })).value : localStorage.getItem(k); } catch { return null; } },
@@ -33,6 +33,7 @@ const Sync = (() => {
   // Record a local change; push it right away (kept in a queue if offline).
   async function changed(k, v) {
     if (!syncable(k)) return;
+    if (k === 'creds' && v === null) return;   // logout stays on this device
     const t = Date.now(); tmap[k] = t; dirty[k] = { v, t }; await saveMeta();
     if (cfg) flush().catch(() => {});
   }
@@ -46,6 +47,7 @@ const Sync = (() => {
       const ch = [];
       for (const [k, e] of Object.entries(items || {})) {
         if (!syncable(k) || (tmap[k] || 0) >= (e.t || 0)) continue;
+        if (k === 'creds' && e.v === null) continue;   // never accept a remote logout
         if (e.v === null) await raw.del(k); else await raw.set(k, e.v);
         tmap[k] = e.t; ch.push(k);
       }
