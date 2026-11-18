@@ -63,7 +63,7 @@ async function renderLogin(err = '', prefill = null) {
   <div class="login">
     <div class="brand"><div class="logo">${ic('truck')}</div><div><h1>شحناتي</h1><div class="muted small">متابعة شحنات حازم حلان وربطها بمتجرك</div></div></div>
     <div class="card card-pad">
-      ${err ? `<div class="banner critical">${ic('alert', 'width="18"')}<div>${esc(err)}</div></div>` : ''}
+      ${err ? `<div class="banner critical">${ic('alert', 'width="18"')}<div style="white-space:pre-line">${esc(err)}</div></div>` : ''}
       <form id="loginForm">
         <div class="field"><label>رقم الموبايل أو البريد الإلكتروني</label><input name="email" inputmode="tel" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required class="ltr" style="text-align:right" value="${esc(prefill?.email || '')}"></div>
         <div class="field"><label>كلمة المرور</label><input name="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required value="${esc(prefill?.password || '')}"></div>
@@ -77,15 +77,20 @@ async function renderLogin(err = '', prefill = null) {
     e.preventDefault();
     const fd = new FormData(e.target), btn = $('#loginBtn');
     btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
-    const remember = !!fd.get('remember'), entered = { email: normDigits(clean(fd.get('email'))), password: normDigits(fd.get('password')) };
+    const remember = !!fd.get('remember'), typed = clean(fd.get('email')), entered = { email: typed, password: String(fd.get('password') ?? '') };
     try {
-      await Hazem.login(entered.email, entered.password);
+      try { await Hazem.login(entered.email, entered.password); }
+      catch (e1) {
+        // Not found as typed: one more try with Arabic digits turned into 0-9 (never touches the password).
+        const alt = normDigits(typed).replace(/\s+/g, '');
+        if (e1.code === 'NOUSER' && alt && alt !== typed) { entered.email = alt; await Hazem.login(alt, entered.password); } else throw e1;
+      }
       const p = await loginPrefs(); await Store.set('login_prefs', { ...p, remember });
       if (remember) await Store.set('creds', Hazem.creds); else await Store.del('creds');
       renderShell();
       askNotifyPermission();
       Kapso.init().catch(() => {});
-    } catch (er) { renderLogin(er.code === 'LOCKED' ? er.message : /غير صحيحة/.test(er.message) ? 'حازم قال إن البيانات غلط. اتأكد من الرقم (من غير مسافات) والباسورد، وجرّب زرار 👁 تشوف اللي كتبته.' : er.message, remember ? entered : null); }
+    } catch (er) { renderLogin(er.message + (er.code === 'NOUSER' || er.code === 'BADPASS' ? '\nجرّب زرار 👁 تشوف اللي كتبته.' : ''), { email: typed, password: entered.password }); }
   };
 }
 
@@ -1551,7 +1556,7 @@ function viewMore() {
       <label class="item" style="align-items:center"><span class="grow"><b>احتفظ ببيانات الدخول لحازم</b><div class="tiny">التطبيق يدخل لوحده ومايطلبهاش تاني</div></span><input type="checkbox" id="lpRemember" class="switch"></label>
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.11</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.12</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);

@@ -98,7 +98,12 @@ const Hazem = {
     let data = null;
     try { data = JSON.parse(r.text.replace(/^﻿/, '').trim()); } catch {}
     if (!data) throw new Error('تعذر الاتصال بموقع الشحن');
-    if (data.type === 'failed') throw new Error('رقم الموبايل أو كلمة المرور غير صحيحة');
+    if (data.type === 'failed') {
+      // The portal says which one is wrong ("User Not Found" / a password message) — tell the user exactly that.
+      const pm = String(data.message || '');
+      const e = new Error(/not\s*found|لا يوجد|غير موجود/i.test(pm) ? 'حازم مش لاقي المستخدم ده: رقم الموبايل أو الإيميل مش مطابق للي مسجّل عنده' : /pass/i.test(pm) ? 'حازم قال: كلمة المرور غلط' : 'رقم الموبايل أو كلمة المرور غير صحيحة' + (pm ? ` (حازم: ${pm})` : ''));
+      e.code = /not\s*found|لا يوجد|غير موجود/i.test(pm) ? 'NOUSER' : 'BADPASS'; e.portal = pm; throw e;
+    }
     if (data.type === 'locked') {
       const m = String(data.message || '').match(/(\d+)\s*دقيق/);
       this._lockedUntil = Date.now() + (m ? Number(m[1]) : 5) * 60000 + 5000;
