@@ -39,6 +39,7 @@ function openBackup() {
 // ---- Live sync between devices -------------------------------------------------
 async function applySynced(keys) {
   if (!keys.length) return;
+  if (keys.includes('creds')) { const c = await Store.get('creds'); if (c && Hazem.creds && (c.email !== Hazem.creds.email || c.password !== Hazem.creds.password)) { Hazem.creds = c; Hazem._cache?.clear?.(); } }
   state.sentMap = await Store.get('sent_map', {}); state.overrides = await Store.get('overrides', {});
   try { await Shopify.load(); } catch {}
   const visible = ['wa_drafts', 'wa_sent', 'sent_map', 'overrides', 'wa_log', 'shopify_cfg'].some(k => keys.includes(k));

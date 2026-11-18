@@ -55,6 +55,37 @@ const state = {
 
 // ---------- Login ----------
 // Per device: remember the login (default yes) / ask for it on every start (default no).
+// Logs in to Hazem exactly as typed; if the user is "not found", once more with Arabic digits turned into 0-9. The password is never altered.
+async function hazemLogin(typed, password) {
+  try { await Hazem.login(typed, password); return typed; }
+  catch (e1) {
+    const alt = normDigits(typed).replace(/\s+/g, '');
+    if (e1.code === 'NOUSER' && alt && alt !== typed) { await Hazem.login(alt, password); return alt; }
+    throw e1;
+  }
+}
+// More ← change the Hazem login saved for the app and the website (synced to every device).
+function openChangeLogin() {
+  const sh = sheet('تغيير بيانات دخول حازم', `
+    <div class="banner info small" style="display:block">بيتجرّب على حازم الأول. لو اتقبل بيتحفظ <b>على الموقع وعلى كل أجهزتك</b>، والتطبيق والموقع بيستخدموه تلقائي.</div>
+    <div class="card card-pad">
+      <div class="field"><label>رقم الموبايل أو الإيميل</label><input id="clEmail" class="ltr" style="text-align:right" inputmode="tel" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(Hazem.creds?.email || '')}"></div>
+      <div class="field"><label>كلمة المرور</label><input id="clPw" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <button class="btn primary block" id="clGo">جرّب واحفظ</button><div id="clRes" class="small" style="margin-top:10px;white-space:pre-line"></div>
+    </div>`);
+  $('#clGo', sh.el).onclick = async () => {
+    const btn = $('#clGo', sh.el), typed = clean($('#clEmail', sh.el).value), pw = $('#clPw', sh.el).value, res = $('#clRes', sh.el);
+    if (!typed || !pw) return toast('اكتب اليوزر والباسورد', 'err');
+    btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+    try {
+      const email = await hazemLogin(typed, pw);
+      Hazem.creds = { email, password: pw };
+      await Store.set('creds', Hazem.creds);
+      const p = await loginPrefs(); if (!p.remember) await Store.set('login_prefs', { ...p, remember: true });
+      toast('اتحفظ ✅ وهيوصل لكل أجهزتك', 'ok'); sh.close(); if (typeof syncNow === 'function') syncNow();
+    } catch (e) { btn.disabled = false; btn.textContent = 'جرّب واحفظ'; res.innerHTML = `<span style="color:var(--critical)">${esc(e.message)}</span>`; }
+  };
+}
 async function loginPrefs() { return { remember: true, ask: false, ...(await Store.get('login_prefs', {})) }; }
 async function renderLogin(err = '', prefill = null) {
   const lp = await loginPrefs();
@@ -81,12 +112,7 @@ async function renderLogin(err = '', prefill = null) {
     btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
     const remember = !!fd.get('remember'), typed = clean(fd.get('email')), entered = { email: typed, password: String(fd.get('password') ?? '') };
     try {
-      try { await Hazem.login(entered.email, entered.password); }
-      catch (e1) {
-        // Not found as typed: one more try with Arabic digits turned into 0-9 (never touches the password).
-        const alt = normDigits(typed).replace(/\s+/g, '');
-        if (e1.code === 'NOUSER' && alt && alt !== typed) { entered.email = alt; await Hazem.login(alt, entered.password); } else throw e1;
-      }
+      entered.email = await hazemLogin(typed, entered.password);
       const p = await loginPrefs(); await Store.set('login_prefs', { ...p, remember });
       if (remember) await Store.set('creds', Hazem.creds); else await Store.del('creds');
       renderShell();
@@ -1586,9 +1612,10 @@ function viewMore() {
     <div class="list menu">
       <label class="item" style="align-items:center"><span class="grow"><b>احتفظ ببيانات الدخول لحازم</b><div class="tiny">التطبيق يدخل لوحده ومايطلبهاش تاني</div></span><input type="checkbox" id="lpRemember" class="switch"></label>
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
+      ${menuItem('edit', 'تغيير بيانات دخول حازم (اليوزر والباسورد)', 'chglogin')}
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.14</p>`;
-  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.15</p>`;
+  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, chglogin: openChangeLogin, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
   Store.get('wa_to_shopify', true).then(v => { const t = $('#waShopToggle'); if (!t) return; t.checked = v !== false; t.onchange = () => Store.set('wa_to_shopify', t.checked); });
