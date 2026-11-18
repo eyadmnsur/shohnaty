@@ -6,6 +6,7 @@ const ALERT_TYPES = [
   ['partial', '🧩 تسليم جزئي', 'العميل استلم جزء من الأوردر', true],
   ['postponed', '📅 تأجيل أو العميل مردّش', 'مع سبب التأجيل والموعد الجديد', true],
   ['shopify_new', '🛍️ أوردر جديد على شوبيفاي', 'أول ما عميل يطلب من المتجر', true],
+  ['wa_reply', '💬 ردود عملاء واتساب', 'تأكيد / إلغاء الأوردر ورسايل العملاء (واتساب API)', true],
   ['delivered', '✅ شحنة اتسلّمت', 'إشعار هادي من غير صوت', false],
 ];
 async function notifyPrefs() {
@@ -39,7 +40,7 @@ function openAlertSettings() {
   };
 }
 
-const ALERT_ICON = { underpay: '💸', returned: '↩️', partial: '🧩', postponed: '📅', shopify_new: '🛍️', delivered: '✅' };
+const ALERT_ICON = { wa_reply: '💬', underpay: '💸', returned: '↩️', partial: '🧩', postponed: '📅', shopify_new: '🛍️', delivered: '✅' };
 async function unreadAlerts() {
   const log = await Store.get('alerts_log', []), seen = await Store.get('alerts_read_at', 0);
   return (log || []).filter(a => a.t > seen).length;
@@ -67,6 +68,7 @@ async function openAlertCenter() {
     $$('#acL [data-i]', sh.el).forEach(b => b.onclick = async () => {
       const a = list[b.dataset.i];
       if (a.type === 'shopify_new') { sh.close(); state.orderSrc = 'shopify'; state.shopTab = 'confirm'; return go('shop'); }
+      if (a.type === 'wa_reply') { sh.close(); const ref = String(a.ref || ''); if (ref.startsWith('M:')) return openKapsoInbox(); state.orderSrc = ref.startsWith('D:') ? 'wa' : 'shopify'; state.shopTab = 'confirm'; return go('shop'); }
       if (!a.waybill) return;
       try { const r = (await Hazem.search(a.waybill, 'waybill')).find(x => x.waybill === a.waybill); if (r) openShipment(r); else toast('مش لاقي الشحنة'); } catch (e) { handleErr(e); }
     });

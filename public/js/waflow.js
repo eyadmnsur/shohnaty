@@ -14,12 +14,13 @@ const draftShip = d => ({ consignee: d.s.client_name, order_id: d.s.order_id || 
 async function renderWaSection(body) {
   await Promise.all([waLoad(), ensureSectors().catch(() => {}), loadCustomerHistory()]);
   const tab = state.shopTab;
-  const addBtn = `<button class="btn wa block" id="waAdd" style="margin-bottom:10px">${ic('plus')} أوردر جديد من واتساب / ماسنجر (صور أو نص)</button>`;
+  const nMsg = new Set((Kapso.on ? Kapso.msgs : []).map(m => m.phone)).size;
+  const addBtn = `<button class="btn wa block" id="waAdd" style="margin-bottom:10px">${ic('plus')} أوردر جديد من واتساب / ماسنجر (صور أو نص)</button>${nMsg ? `<button class="btn block" id="waInbox" style="margin-bottom:10px">📥 رسائل العملاء الواردة (${nMsg})</button>` : ''}`;
   if (tab === 'sent') return renderWaSent(body, addBtn);
   const list = state.waDrafts.filter(d => d.stage === tab);
   if (!list.length) {
     body.innerHTML = addBtn + `<div class="card empty">${ic(tab === 'confirm' ? 'whatsapp' : 'truck')}<div>${tab === 'confirm' ? 'مفيش أوردرات مستنية تأكيد' : 'مفيش أوردرات جاهزة للشحن'}</div><div class="small" style="margin-top:6px">${tab === 'confirm' ? 'ضيف أوردر من صور أو رسايل الشات بالزرار اللي فوق' : 'الأوردرات بتيجي هنا لما تدوس "العميل أكّد"'}</div></div>`;
-    $('#waAdd', body).onclick = openWaOrders; return;
+    $('#waAdd', body).onclick = () => openWaOrders(); if ($('#waInbox', body)) $('#waInbox', body).onclick = openKapsoInbox; return;
   }
   const sel = state.waSel = state.waSel || new Set();
   body.innerHTML = addBtn + `
@@ -33,13 +34,13 @@ async function renderWaSection(body) {
         <div class="grow">
           <div class="row between" data-open="${i}"><span class="title">${CHANNELS[d.channel].icon} ${esc(s.client_name || 'بدون اسم')}</span><span class="amount">${s.price ? money(s.price) + ' <span class="tiny">ج.م</span>' : '—'}</span></div>
           <div class="meta ellipsis" data-open="${i}">${esc(s.product_name || '')}</div>
-          <div class="row wrap" style="gap:6px;margin-top:6px">${area}${s.phone_1 ? historyBadge(s.phone_1) : ''}${d.shop ? `<span class="badge info">🛍️ ${esc(d.shop.name)}</span>` : ''}${waBadge('WA:' + d.id)}${probs.map(p => `<span class="badge warning">${esc(p)}</span>`).join('')}</div>
+          <div class="row wrap" style="gap:6px;margin-top:6px">${area}${s.phone_1 ? historyBadge(s.phone_1) : ''}${d.cancelRequested ? '<span class="badge critical">❌ العميل طلب الإلغاء</span>' : ''}${d.shop ? `<span class="badge info">🛍️ ${esc(d.shop.name)}</span>` : ''}${waBadge('WA:' + d.id)}${probs.map(p => `<span class="badge warning">${esc(p)}</span>`).join('')}</div>
           ${tab === 'confirm' ? `<div class="row" style="margin-top:10px;gap:8px"><button class="btn sm wa grow" data-msg="${i}">${ic('whatsapp')} ابعت تأكيد</button><button class="btn sm grow" data-ok="${i}">${ic('check')} العميل أكّد</button><button class="icon-btn" data-del="${i}">${ic('close')}</button></div>`
             : `<div class="row" style="margin-top:8px;gap:8px"><button class="btn sm grow" data-back="${i}">↩︎ رجّعه للتأكيد</button><button class="icon-btn" data-del="${i}">${ic('close')}</button></div>`}
         </div></div>`;
     }).join('')}</div>
     ${tab === 'ready' ? `<div style="height:70px"></div><div class="bottom-bar"><button class="btn accent" id="waShip" ${[...sel].some(id => list.some(d => d.id === id)) ? '' : 'disabled'}>${ic('truck')} ابعت ${list.filter(d => sel.has(d.id)).length || ''} لحازم حلان</button></div>` : ''}`;
-  $('#waAdd', body).onclick = openWaOrders;
+  $('#waAdd', body).onclick = () => openWaOrders(); if ($('#waInbox', body)) $('#waInbox', body).onclick = openKapsoInbox;
   const rerender = () => renderWaSection(body);
   $$('[data-open]', body).forEach(c => c.onclick = () => { const d = list[c.dataset.open]; openAdd(d.s, async vals => {
       const before = d.s; d.s = { ...d.s, ...vals, _confident: true }; await waSave();
@@ -65,6 +66,10 @@ async function renderWaSection(body) {
 
 // WhatsApp opens with the message; Messenger has no phone link, so the message is copied instead.
 async function draftMessage(d, onSent) {
+  if (d.channel !== 'messenger' && Kapso.on && Kapso.confirmReady()) {
+    try { await Kapso.confirmDraft(d); toast('اتبعت التأكيد بواتساب API ✓', 'ok'); onSent && onSent('confirm'); } catch (e) { toast(e.message, 'err'); }
+    return;
+  }
   if (d.channel !== 'messenger') return waCompose({ ship: draftShip(d) }, 'confirm', onSent);
   const c = await WA.cfg(), text = WA.fill(c.templates.confirm.text, await waData({ ship: draftShip(d) }), 'confirm');
   const ok = await copyText(text);
@@ -107,7 +112,7 @@ async function sendWaDrafts(list, done) {
 
 async function renderWaSent(body, addBtn) {
   const sent = state.waSent;
-  if (!sent.length) { body.innerHTML = addBtn + `<div class="card empty">${ic('truck')}<div>لسه مفيش أوردرات واتساب اتبعتت</div></div>`; $('#waAdd', body).onclick = openWaOrders; return; }
+  if (!sent.length) { body.innerHTML = addBtn + `<div class="card empty">${ic('truck')}<div>لسه مفيش أوردرات واتساب اتبعتت</div></div>`; $('#waAdd', body).onclick = () => openWaOrders(); if ($('#waInbox', body)) $('#waInbox', body).onclick = openKapsoInbox; return; }
   body.innerHTML = addBtn + loading();
   const from = new Date(Math.min(...sent.slice(0, 200).map(x => new Date(x.date).getTime()))); from.setDate(from.getDate() - 1);
   let ships = [];
@@ -121,7 +126,7 @@ async function renderWaSent(body, addBtn) {
       <div class="row between" style="margin-top:6px">${ship ? statusBadge(ship) : '<span class="badge">مش لاقي الشحنة</span>'}<span class="tiny">${new Date(x.date).toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'short' })}</span></div>
       ${ship && hasReason(ship) ? `<div class="fail-line" data-x="${esc(ship.id)}"></div>` : ''}
     </div></button>`).join('')}</div>`;
-  $('#waAdd', body).onclick = openWaOrders;
+  $('#waAdd', body).onclick = () => openWaOrders(); if ($('#waInbox', body)) $('#waInbox', body).onclick = openKapsoInbox;
   $$('.item[data-i]', body).forEach(b => b.onclick = () => { const r = rows[b.dataset.i]; if (r.ship) openShipment(r.ship); });
   fillFailLines(body, rows.map(r => r.ship).filter(Boolean));
 }

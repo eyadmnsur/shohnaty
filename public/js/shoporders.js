@@ -67,7 +67,10 @@ async function openShopOrder(o, tab = 'confirm', after = () => viewShop()) {
          ['العميل أكّد ✓', async b => { if (!confirm(`العميل أكّد ${o.name}؟ هيتعمل Fulfilled وينتقل لـ"جاهز للشحن".`)) return; b.disabled = true; b.innerHTML = '<div class="spinner"></div>'; try { await Shopify.fulfill(o.id, null); toast(`${o.name} اتأكد ✓`, 'ok'); sh.close(); after(); } catch (e) { b.disabled = false; b.textContent = 'العميل أكّد ✓'; handleErr(e); } }, 'primary']]
       : [['شيله من الجاهز (اتبعت لحازم)', async b => { if (!confirm(`تعتبر ${o.name} اتبعت لحازم وتشيله من "جاهز للشحن"؟`)) return; b.disabled = true; try { await Shopify.tag(o.id, [TAG_SENT]); toast('اتنقل لـ«اتبعت للشحن»', 'ok'); sh.close(); after(); } catch (e) { b.disabled = false; handleErr(e); } }],
          ['إلغاء الأوردر', async b => { if (!confirm(`تلغي ${o.name} على شوبيفاي؟`)) return; b.disabled = true; try { await Shopify.cancel(o.id); toast('اتلغى', 'ok'); sh.close(); after(); } catch (e) { b.disabled = false; handleErr(e); } }]]);
-  $('#soWa', sh.el).onclick = () => waCompose({ order: o }, 'confirm', async k => { await markWa(o.name, k); });
+  $('#soWa', sh.el).onclick = async () => {
+    if (Kapso.on && Kapso.confirmReady()) { try { await Kapso.confirmOrder(o); await markWa(o.name, 'confirm'); toast('اتبعت التأكيد بواتساب API ✓', 'ok'); } catch (e) { toast(e.message, 'err'); } return; }
+    waCompose({ order: o }, 'confirm', async k => { await markWa(o.name, k); });
+  };
   $('#soEdit', sh.el).onclick = () => { sh.close(); editShopOrder(o, after); };
   $('#soShop', sh.el).onclick = () => window.open(Shopify.adminUrl(o.id), '_blank');
   // Is there already a shipment for this customer / order on Hazem? Offer to link it.

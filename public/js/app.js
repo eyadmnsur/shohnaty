@@ -48,6 +48,7 @@ const state = {
   Hazem.creds = creds;
   renderShell();
   askNotifyPermission();
+  Kapso.init().catch(() => {});
 })();
 
 // ---------- Login ----------
@@ -290,11 +291,12 @@ async function loadShopBadge() {
 // Each template holds several versions separated by a line "---"; one is picked at random
 // each time, and [a|b|c] picks a random word, so no two messages are identical
 // (reduces the risk of WhatsApp flagging the number for spam).
+const WA_CONFIRM_V1 = '[أهلاً|أهلاً وسهلاً|مساء الخير|يا هلا] يا {الاسم} [👋|🌸|😊]\nمعاك [فريق|خدمة عملاء] {المتجر}، [بنأكد مع حضرتك|حابين نأكد مع حضرتك] [أوردر|طلب] رقم {رقم_الأوردر}:\n{المنتجات}\n💰 الإجمالي: {المبلغ} ج.م [الدفع عند الاستلام|كاش عند الاستلام]\n📍 العنوان: {العنوان}\n\n[لو كله تمام|لو البيانات مظبوطة] [ابعتلنا|رد علينا بـ] *تمام* ✅ [عشان نشحنه فورًا|ونشحنهولك على طول] [🙏|❤️]\n---\n[مرحباً|أهلاً] {الاسم} [🌷|✨|😊]\n[شكراً على طلبك من|نورتنا في] {المتجر}!\n[قبل ما نشحن|عشان نجهز الشحنة] [محتاجين نأكد|بنراجع] مع حضرتك:\n🛍️ {المنتجات}\n💵 المبلغ: {المبلغ} ج.م (عند الاستلام)\n🏠 {العنوان}\n\n[تمام كده؟|البيانات صح؟] [رد بـ|ابعت] *تمام* [ولو فيه تعديل قولنا|ولو حابب تغيّر حاجة عرفنا] [🙏|💐]\n---\n[صباح الفل|يا مساء الورد|أهلاً] يا {الاسم} [☀️|🌸|👋]\n[طلبك|أوردرك] رقم {رقم_الأوردر} من {المتجر} [وصلنا|اتسجل عندنا] [وجاهز للتجهيز|ومستني تأكيدك] 📦\n{المنتجات}\nالإجمالي {المبلغ} ج.م [بتدفعهم للمندوب|عند الاستلام]\n[العنوان|التوصيل على]: {العنوان}\n\n[ممكن تأكدلنا|محتاجين تأكيد بسيط] [بكلمة|برد] *تمام* [عشان نبعته النهارده|ونشحنه على طول]؟ [شكراً ليك|متشكرين جداً] [❤️|🙏]';
 const WA_DEFAULTS = {
   confirm: { name: 'تأكيد الأوردر', text: [
-    '[أهلاً|أهلاً وسهلاً|مساء الخير|يا هلا] يا {الاسم} [👋|🌸|😊]\nمعاك [فريق|خدمة عملاء] {المتجر}، [بنأكد مع حضرتك|حابين نأكد مع حضرتك] [أوردر|طلب] رقم {رقم_الأوردر}:\n{المنتجات}\n💰 الإجمالي: {المبلغ} ج.م [الدفع عند الاستلام|كاش عند الاستلام]\n📍 العنوان: {العنوان}\n\n[لو كله تمام|لو البيانات مظبوطة] [ابعتلنا|رد علينا بـ] *تمام* ✅ [عشان نشحنه فورًا|ونشحنهولك على طول] [🙏|❤️]',
-    '[مرحباً|أهلاً] {الاسم} [🌷|✨|😊]\n[شكراً على طلبك من|نورتنا في] {المتجر}!\n[قبل ما نشحن|عشان نجهز الشحنة] [محتاجين نأكد|بنراجع] مع حضرتك:\n🛍️ {المنتجات}\n💵 المبلغ: {المبلغ} ج.م (عند الاستلام)\n🏠 {العنوان}\n\n[تمام كده؟|البيانات صح؟] [رد بـ|ابعت] *تمام* [ولو فيه تعديل قولنا|ولو حابب تغيّر حاجة عرفنا] [🙏|💐]',
-    '[صباح الفل|يا مساء الورد|أهلاً] يا {الاسم} [☀️|🌸|👋]\n[طلبك|أوردرك] رقم {رقم_الأوردر} من {المتجر} [وصلنا|اتسجل عندنا] [وجاهز للتجهيز|ومستني تأكيدك] 📦\n{المنتجات}\nالإجمالي {المبلغ} ج.م [بتدفعهم للمندوب|عند الاستلام]\n[العنوان|التوصيل على]: {العنوان}\n\n[ممكن تأكدلنا|محتاجين تأكيد بسيط] [بكلمة|برد] *تمام* [عشان نبعته النهارده|ونشحنه على طول]؟ [شكراً ليك|متشكرين جداً] [❤️|🙏]',
+    '[أهلاً|أهلاً وسهلاً|مساء الخير|يا هلا] يا {الاسم} [👋|🌸|😊]\nمعاك [فريق|خدمة عملاء] {المتجر}، [بنأكد مع حضرتك|حابين نأكد مع حضرتك] [أوردر|طلب] رقم {رقم_الأوردر}:\n{المنتجات}\n💰 الإجمالي: {المبلغ} ج.م [الدفع عند الاستلام|كاش عند الاستلام]\n📍 العنوان: {العنوان}\n\n[لو كله تمام|لو البيانات مظبوطة] [ابعتلنا|رد علينا بـ] *تمام* ✅ [عشان نشحنه فورًا|ونشحنهولك على طول]\n\n[ولتأكيد المقاس|وعشان نتأكد من المقاس] 📏 [ياريت تبعتلنا|محتاجين منك] الوزن والطول، [أو نص محيط الصدر كام سم|أو نص محيط الصدر بالسنتيمتر]\n[واكتب|وياريت تكتب] اسمك كامل ورقم الطلب {رقم_الأوردر} 🙏',
+    '[مرحباً|أهلاً] {الاسم} [🌷|✨|😊]\n[شكراً على طلبك من|نورتنا في] {المتجر}!\n[قبل ما نشحن|عشان نجهز الشحنة] [محتاجين نأكد|بنراجع] مع حضرتك:\n🛍️ {المنتجات}\n💵 المبلغ: {المبلغ} ج.م (عند الاستلام)\n🏠 {العنوان}\n\n[تمام كده؟|البيانات صح؟] [رد بـ|ابعت] *تمام* ✅ [ولو فيه تعديل قولنا|ولو حابب تغيّر حاجة عرفنا]\n\n[ولتأكيد المقاس|وعشان نتأكد من المقاس] 📏 [ياريت تبعتلنا|محتاجين منك] الوزن والطول، [أو نص محيط الصدر كام سم|أو نص محيط الصدر بالسنتيمتر]\n[واكتب|وياريت تكتب] اسمك كامل ورقم الطلب {رقم_الأوردر} 🙏',
+    '[صباح الفل|يا مساء الورد|أهلاً] يا {الاسم} [☀️|🌸|👋]\n[طلبك|أوردرك] رقم {رقم_الأوردر} من {المتجر} [وصلنا|اتسجل عندنا] [وجاهز للتجهيز|ومستني تأكيدك] 📦\n{المنتجات}\nالإجمالي {المبلغ} ج.م [بتدفعهم للمندوب|عند الاستلام]\n[العنوان|التوصيل على]: {العنوان}\n\n[ممكن تأكدلنا|محتاجين تأكيد بسيط] [بكلمة|برد] *تمام* ✅ [عشان نبعته النهارده|ونشحنه على طول]\n\n[ولتأكيد المقاس|وعشان نتأكد من المقاس] 📏 [ياريت تبعتلنا|محتاجين منك] الوزن والطول، [أو نص محيط الصدر كام سم|أو نص محيط الصدر بالسنتيمتر]\n[واكتب|وياريت تكتب] اسمك كامل ورقم الطلب {رقم_الأوردر} 🙏',
   ].join('\n---\n') },
   shipped: { name: 'تم الشحن', text: [
     '[أهلاً|أهلاً وسهلاً] {الاسم} [🚚|📦]\n[أوردرك|طلبك] رقم {رقم_الأوردر} [اتشحن|خرج للشحن] [النهارده|خلاص] ✅\nرقم البوليصة: {البوليصة}\n[المندوب هيكلم حضرتك|هيتواصل معاك المندوب] قبل التوصيل، والمبلغ المطلوب {المبلغ} ج.م.\n[شكراً لثقتك في|نورتنا يا {الاسم} في] {المتجر} [❤️|🌸]',
@@ -310,7 +312,13 @@ const WA_DEFAULTS = {
   ].join('\n---\n') },
 };
 const WA = {
-  async cfg() { const c = await Store.get('wa_cfg', {}); return { app: c.app || 'ask', store: c.store || '', templates: { ...WA_DEFAULTS, ...(c.templates || {}) } }; },
+  async cfg() {
+    const c = await Store.get('wa_cfg', {});
+    const t = { ...(c.templates || {}) };
+    // An unedited copy of the old confirmation text is replaced by the new default (it now asks for size + name + order number).
+    if (t.confirm && t.confirm.text.trim() === WA_CONFIRM_V1.trim()) delete t.confirm;
+    return { app: c.app || 'ask', store: c.store || '', templates: { ...WA_DEFAULTS, ...t } };
+  },
   async save(c) { await Store.set('wa_cfg', c); },
   phone: p => { const x = findPhones(p)[0]; return x ? '2' + x : ''; },
   _last: {},
@@ -379,6 +387,9 @@ async function markWa(orderName, key) {
   state.waLog[orderName] = { t: Date.now(), key }; await Store.set('wa_log', state.waLog);
 }
 function waBadge(orderName) {
+  const ref = /^WA:/.test(orderName) ? 'D:' + orderName.slice(3) : 'S:' + String(orderName).replace(/\D/g, '');
+  const kb = (typeof Kapso !== 'undefined' && Kapso.on) ? Kapso.badge(ref) + (Kapso.refs[ref]?.textReply ? `<span class="badge canary" title="${esc(Kapso.refs[ref].textReply)}">💬 ردّ: ${esc(String(Kapso.refs[ref].textReply).slice(0, 40))}</span>` : '') : '';
+  if (kb) return kb;
   const x = state.waLog?.[orderName]; if (!x) return '';
   const mins = Math.round((Date.now() - x.t) / 60000);
   const when = mins < 1 ? "دلوقتي" : mins < 60 ? `من ${mins} د` : mins < 1440 ? `من ${Math.round(mins / 60)} س` : `من ${Math.round(mins / 1440)} يوم`;
@@ -726,6 +737,7 @@ function openShipment(s) {
         <a class="action" href="tel:${esc(s.phone1)}">${ic('phone')}اتصال</a>
         <button class="action" id="waBtn">${ic('whatsapp')}واتساب</button>
         <button class="action" id="editBtn">${ic('edit')}تعديل</button>
+        ${Kapso.on && Kapso.templates.some(t => t.name === 'order_update_ar' && t.status === 'APPROVED') ? `<button class="action" id="kpUpd">${ic('whatsapp')}ابعت الحالة</button>` : ''}
         <a class="action" href="${HH_REAL}/admin-area/shippings.php?action=edit&id=${encodeURIComponent(s.id)}" target="_blank">${ic('web')}في الموقع</a>
       </div>
     </div>
@@ -745,6 +757,7 @@ function openShipment(s) {
     </dl></div>
     <div class="section-title">مسار الشحنة</div><div class="card" id="hist">${loading()}</div>`);
   $('#editBtn', sh.el).onclick = () => { sh.close(); openEdit(s); };
+  if ($('#kpUpd', sh.el)) $('#kpUpd', sh.el).onclick = async e => { const b = e.currentTarget; b.disabled = true; try { await Kapso.notify(s, s.status.replace(/^\d+\s*-\s*/, ''), false); toast('اتبعتت للعميل ✓', 'ok'); } catch (err) { toast(err.message, 'err'); } b.disabled = false; };
   if ($('#ordBtn', sh.el)) $('#ordBtn', sh.el).onclick = async e => {
     const b = e.currentTarget, old = b.innerHTML; b.disabled = true; b.textContent = 'بدوّر على الأوردر…';
     try {
@@ -1150,7 +1163,11 @@ async function renderConfirm() {
         <div class="row" style="margin-top:10px;gap:8px"><button class="btn sm wa grow" data-wa="${i}">${ic('whatsapp')} ابعت تأكيد</button><button class="btn sm grow" data-ok="${i}">${ic('check')} العميل أكّد</button></div>
       </div></div>`;
     }).join('')}</div>`;
-  $$('[data-wa]', body).forEach(b => b.onclick = () => { const o = orders[b.dataset.wa]; waCompose({ order: o }, 'confirm', async k => { await markWa(o.name, k); renderConfirm(); }); });
+  $$('[data-wa]', body).forEach(b => b.onclick = async () => {
+    const o = orders[b.dataset.wa];
+    if (Kapso.on && Kapso.confirmReady()) { b.disabled = true; try { await Kapso.confirmOrder(o); await markWa(o.name, 'confirm'); toast('اتبعت التأكيد بواتساب API ✓', 'ok'); } catch (e) { toast(e.message, 'err'); } return renderConfirm(); }
+    waCompose({ order: o }, 'confirm', async k => { await markWa(o.name, k); renderConfirm(); });
+  });
   $$('[data-ok]', body).forEach(b => b.onclick = () => confirmOrder(orders[b.dataset.ok], b));
   bindConfirmList(body, orders, () => { state.confSel = new Set(); $('#confBar')?.remove(); renderConfirm(); });
   if ($('#waQueue')) $('#waQueue').onclick = () => waQueue(pending);
@@ -1164,6 +1181,7 @@ async function confirmOrder(o, btn) {
 }
 // Go through customers one by one: open WhatsApp, come back, next.
 function waQueue(list) {
+  if (Kapso.on && Kapso.confirmReady()) return Kapso.bulkConfirm(list, 'order', () => renderConfirm());
   let i = 0;
   const sh = sheet('تأكيد سريع', '<div id="qBody"></div>', [['إنهاء', () => { sh.close(); renderConfirm(); }], ['التالي ←', () => { i++; show(); }]]);
   const show = async () => {
@@ -1239,6 +1257,7 @@ async function shipSelected() {
       await Shopify.tag(o.id, [TAG_SENT, 'HZM-' + found.waybill]);
       state.sentMap[o.name] = { waybill: found.waybill, id: found.id, price: vals.price };
       state.selected.delete(o.name); delete state.overrides[o.name];
+      Kapso.prefs().then(p => p.notifyShipped && Kapso.notify({ ...found, phone1: found.phone1 || vals.phone_1, order_id: found.order_id || vals.order_id }, 'الشحنة اتسجلت وبتتجهز للاستلام من المندوب 📦').catch(() => {}));
       log(`✅ ${esc(o.name)} ← <span class="ltr">${esc(found.waybill)}</span>`); ok++;
     } catch (e) { log(`❌ ${esc(o.name)}: ${esc(e.message)}`, 'muted'); }
     $('#pg', sh.el).style.width = ((i + 1) / list.length * 100) + '%';
@@ -1510,7 +1529,7 @@ function viewMore() {
     <div class="list menu">${menuItem('bag', Shopify.ready ? 'إعدادات ربط شوبيفاي' : 'ربط متجر شوبيفاي', 'shop')}
       <label class="item" style="align-items:center"><span class="ico">${ic('check')}</span><span class="grow"><b>علّم الأوردر «مدفوع» تلقائي</b><div class="tiny">لما الشركة تسجّل تسليم ناجح كامل (مش جزئي)</div></span><input type="checkbox" id="autoPaidToggle" class="switch"></label></div>
     <div class="section-title">أوردرات واتساب وماسنجر</div>
-    <div class="list menu">${menuItem('plus', 'أوردر جديد من الشات (صور أو نص)', 'wao')}${menuItem('whatsapp', 'واتساب والرسايل الجاهزة', 'wa')}${menuItem('gear', 'الذكاء الاصطناعي لقراءة الشات (Claude / Gemini)', 'ai')}
+    <div class="list menu">${menuItem('plus', 'أوردر جديد من الشات (صور أو نص)', 'wao')}${menuItem('whatsapp', 'واتساب والرسايل الجاهزة', 'wa')}${menuItem('bell', 'واتساب API (كابسو): تأكيد بزرارين وردود تلقائية', 'kapso')}${menuItem('gear', 'الذكاء الاصطناعي لقراءة الشات (Claude / Gemini)', 'ai')}
       <label class="item" style="align-items:center"><span class="ico">${ic('bag')}</span><span class="grow"><b>سجّلها كأوردرات على شوبيفاي كمان</b><div class="tiny">عشان كل المبيعات والتقارير تبقى في مكان واحد</div></span><input type="checkbox" id="waShopToggle" class="switch"></label></div>
     <div class="section-title">التنبيهات</div>
     <div class="list menu">${menuItem('bell', 'مركز التنبيهات', 'center')}${menuItem('alert', 'إعدادات التنبيهات (مرتجع، تأجيل، دفع أقل، أوردرات…)', 'alerts')}</div>
@@ -1518,8 +1537,8 @@ function viewMore() {
     <div class="list menu">${menuItem('refresh', 'المزامنة بين الموبايل والموقع', 'sync')}${menuItem('download', 'نسخ البيانات يدويًا', 'backup')}</div>
     <div class="section-title">الحساب</div>
     <div class="list menu">${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.5</p>`;
-  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.6</p>`;
+  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin(); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
   Store.get('wa_to_shopify', true).then(v => { const t = $('#waShopToggle'); if (!t) return; t.checked = v !== false; t.onchange = () => Store.set('wa_to_shopify', t.checked); });

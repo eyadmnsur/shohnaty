@@ -33,6 +33,7 @@ async function autoMarkPaid(manual = false) {
       if (o.displayFinancialStatus !== 'PAID') await Shopify.markPaid(o.id);
       await Shopify.tag(o.id, [TAG_DELIVERED]);
       done++;
+      Kapso.prefs().then(p => p.notifyDelivered && Kapso.notify(ship, 'تم التسليم بنجاح ✅ شكراً لثقتك').catch(() => {}));
     } catch {}
   }
   if (done) toast(`✅ ${done} أوردر اتسلّم كامل واتعلّم «مدفوع» على شوبيفاي`, 'ok');

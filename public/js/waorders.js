@@ -37,7 +37,7 @@ function waToShipment(o) {
   };
 }
 
-async function openWaOrders() {
+async function openWaOrders(opts = {}) {
   await Promise.all([ensureSectors().catch(() => {}), loadCustomerHistory()]);
   await waLoad();
   const imgs = [];
@@ -65,6 +65,7 @@ async function openWaOrders() {
     <div id="waOut"></div>`);
   const out = $('#waOut', sh.el);
   AI.provider().then(p => { $('#waVia', sh.el).textContent = p === 'gemini' ? 'بيقرا الرسايل والصور بـ Gemini' : p === 'claude' ? 'بيقرا الرسايل والصور بـ Claude API' : 'مفيش مفتاح ذكاء اصطناعي — استخدم Claude Pro تحت، أو اربط مفتاح من المزيد'; });
+  if (opts.text && $('#waText', sh.el)) $('#waText', sh.el).value = (opts.name ? opts.name + ' — ' : '') + (opts.phone ? '+' + opts.phone + '\n' : '') + opts.text;
   $$('#waCh button', sh.el).forEach(b => b.onclick = () => { channel = state.lastChannel = b.dataset.c; $$('#waCh button', sh.el).forEach(x => x.classList.toggle('on', x === b)); });
   // New orders land in the WhatsApp/Messenger section of the Orders tab.
   const addOrders = async orders => {

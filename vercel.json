@@ -8,6 +8,10 @@
     {
       "source": "/sp/:host/:path*",
       "destination": "/api/proxy?kind=sp&host=:host&path=:path*"
+    },
+    {
+      "source": "/api/kapso/:op",
+      "destination": "/api/kapso?op=:op"
     }
   ]
 }
