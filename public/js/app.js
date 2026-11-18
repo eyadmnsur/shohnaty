@@ -70,9 +70,11 @@ async function renderLogin(err = '', prefill = null) {
         <label class="row" style="gap:10px;align-items:center;margin:4px 0 12px"><input type="checkbox" name="remember" class="switch" ${lp.remember ? 'checked' : ''}><span class="small">احتفظ ببيانات الدخول على الجهاز ده</span></label>
         <button class="btn primary block" id="loginBtn">تسجيل الدخول</button>
       </form>
+      ${window.SYNC_BASE ? '' : `<div class="muted small" style="text-align:center;margin:14px 0 8px">أو</div><button class="btn block" id="viaSite" type="button">🔗 ادخل بحساب الموقع (بيانات حازم محفوظة عليه)</button>`}
     </div>
     <p class="tiny" style="text-align:center">نفس بيانات الدخول على موقع hazem-halan.com — بتتحفظ على موبايلك بس.</p>
   </div>`;
+  if ($('#viaSite')) $('#viaSite').onclick = openSiteLogin;
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const fd = new FormData(e.target), btn = $('#loginBtn');
@@ -91,6 +93,35 @@ async function renderLogin(err = '', prefill = null) {
       askNotifyPermission();
       Kapso.init().catch(() => {});
     } catch (er) { renderLogin(er.message + (er.code === 'NOUSER' || er.code === 'BADPASS' ? '\nجرّب زرار 👁 تشوف اللي كتبته.' : ''), { email: typed, password: entered.password }); }
+  };
+}
+
+// Sign in with the account saved on your website: no need to type Hazem's password on the phone.
+function openSiteLogin() {
+  const sh = sheet('الدخول بحساب الموقع', `
+    <div class="banner info small" style="display:block">الموقع محفوظ عليه بيانات دخولك لحازم. اربط التطبيق بالموقع بكلمة سر الموقع، والتطبيق يدخل لوحده.</div>
+    <div class="card card-pad">
+      <div class="field"><label>لينك الموقع</label><input id="slUrl" class="ltr" inputmode="url" value="https://shohnaty5.vercel.app"></div>
+      <div class="field"><label>كلمة سر الموقع</label><input id="slPw" type="password" autocomplete="off" autocapitalize="off" autocorrect="off"></div>
+      <button class="btn primary block" id="slGo">دخول</button><div id="slRes" class="small" style="margin-top:10px;white-space:pre-line"></div>
+    </div>`);
+  $('#slGo', sh.el).onclick = async () => {
+    const btn = $('#slGo', sh.el), url = $('#slUrl', sh.el).value.trim().replace(/\/+$/, ''), pw = $('#slPw', sh.el).value;
+    const say = t => { $('#slRes', sh.el).innerHTML = `<span style="color:var(--critical)">${esc(t)}</span>`; };
+    if (!/^(https:\/\/|http:\/\/(localhost|127\.))/.test(url) || !pw.trim()) return toast('اكتب اللينك وكلمة سر الموقع', 'err');
+    btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+    try {
+      const ch = await Sync.enable(url, pw);
+      if (typeof applySynced === 'function') await applySynced(ch).catch(() => {});
+      const c = await Store.get('creds');
+      if (!c) { await Sync.disable(); btn.disabled = false; btn.textContent = 'دخول'; return say('الموقع ماعندوش بيانات دخول لحازم. ادخل بيانات حازم يدويًا مرة واحدة.'); }
+      try { await Hazem.login(c.email, c.password); }
+      catch (e) { btn.disabled = false; btn.textContent = 'دخول'; return say('اتربطنا بالموقع، بس بيانات حازم المحفوظة عليه مش مقبولة.\n' + e.message + '\nاكتب بيانات حازم الصح يدويًا من الشاشة اللي قبل.'); }
+      await Store.set('creds', Hazem.creds); sh.close(); renderShell(); askNotifyPermission(); Kapso.init().catch(() => {});
+    } catch (e) {
+      await Sync.disable(); btn.disabled = false; btn.textContent = 'دخول';
+      say(/401/.test(e.message) ? 'كلمة سر الموقع غلط' : /503/.test(e.message) ? 'قاعدة بيانات الموقع مش متربطة' : 'تعذر الاتصال بالموقع. اتأكد من اللينك والنت.');
+    }
   };
 }
 
@@ -1556,7 +1587,7 @@ function viewMore() {
       <label class="item" style="align-items:center"><span class="grow"><b>احتفظ ببيانات الدخول لحازم</b><div class="tiny">التطبيق يدخل لوحده ومايطلبهاش تاني</div></span><input type="checkbox" id="lpRemember" class="switch"></label>
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.13</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.14</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
