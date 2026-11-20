@@ -23,17 +23,17 @@ const Kapso = {
     catch { this.on = false; }
     this.ready = true; return this.on;
   },
-  confirmReady() { return this.templates.some(t => t.name === 'order_confirm_ar' && t.status === 'APPROVED'); },
+  confirmReady() { return this.templates.some(t => t.name === 'order_confirm_ar_v2' && t.status === 'APPROVED'); },
 
   // ---- sending ----
   async storeName() { return (await WA.cfg()).store || state.shopName || (await shopName().catch(() => '')) || 'متجرنا'; },
   async send(body) { return this.call('send', 'POST', body); },
   async confirmOrder(o) {
     const s = orderToShipment(o, state.sectors || []);
-    return this.send({ kind: 'confirm', to: s.phone_1, ref: 'S:' + String(o.name).replace(/\D/g, ''), vars: { customer_name: firstName(s.client_name) || s.client_name, store_name: await this.storeName(), order_number: String(o.name).replace('#', ''), products: s.product_name, total: s.price, address: s.address } });
+    return this.send({ kind: 'confirm', to: s.phone_1, ref: 'S:' + String(o.name).replace(/\D/g, ''), vars: { customer_name: firstName(s.client_name) || s.client_name, store_name: await this.storeName(), order_number: o.name, products: s.product_name, total: s.price, address: s.address } });
   },
   async confirmDraft(d) {
-    return this.send({ kind: 'confirm', to: d.s.phone_1, ref: 'D:' + d.id, vars: { customer_name: firstName(d.s.client_name) || d.s.client_name, store_name: await this.storeName(), order_number: d.shop ? d.shop.name.replace('#', '') : (d.s.order_id || '—'), products: d.s.product_name, total: d.s.price, address: d.s.address } });
+    return this.send({ kind: 'confirm', to: d.s.phone_1, ref: 'D:' + d.id, vars: { customer_name: firstName(d.s.client_name) || d.s.client_name, store_name: await this.storeName(), order_number: d.shop ? d.shop.name : (d.s.order_id ? '#' + String(d.s.order_id).replace('#', '') : '—'), products: d.s.product_name, total: d.s.price, address: d.s.address } });
   },
   // Shipment status message to the customer. Automatic ones are sent once per shipment + status.
   async notify(ship, text, auto = true) {

@@ -17,12 +17,12 @@ const H_CFG = 'shohnaty_kapso', EVENTS = 'shohnaty_kapso_events', REFS = 'shohna
 // ---------- Templates (Arabic, UTILITY) ----------
 const TEMPLATES = [
   {
-    name: 'order_confirm_ar', category: 'UTILITY', language: 'ar', parameter_format: 'NAMED',
+    name: 'order_confirm_ar_v2', category: 'UTILITY', language: 'ar', parameter_format: 'NAMED',
     components: [
-      { type: 'BODY', text: 'أهلاً {{customer_name}} 👋\nشكراً لطلبك من {{store_name}}.\n\n🧾 رقم الطلب: {{order_number}}\n🛍️ المنتجات: {{products}}\n💰 الإجمالي شامل الشحن: {{total}} ج.م\n📍 العنوان: {{address}}\n\nبرجاء تأكيد الطلب لنبدأ التجهيز والشحن.\n\n📏 ولتأكيد المقاس: أرسل الوزن والطول، أو نص محيط الصدر بالسنتيمتر، مع اسمك كاملاً.',
+      { type: 'BODY', text: 'يا هلا يا {{customer_name}} 😊\nمعاك فريق {{store_name}}، حابين نأكد مع حضرتك طلب رقم {{order_number}}:\n\n🛍️ {{products}}\n💰 الإجمالي: {{total}} ج.م كاش عند الاستلام\n📍 العنوان: {{address}}\n\nلو البيانات مظبوطة اضغط «تأكيد الطلب» ✅ ونشحنهولك على طول\n\nولتأكيد المقاس 📏 محتاجين منك الوزن والطول، أو نص محيط الصدر كام سم',
         example: { body_text_named_params: [
-          { param_name: 'customer_name', example: 'سارة' }, { param_name: 'store_name', example: 'علياء فاشون' }, { param_name: 'order_number', example: '1209' },
-          { param_name: 'products', example: 'فستان كتان مقاس L' }, { param_name: 'total', example: '1495' }, { param_name: 'address', example: 'المعادي، القاهرة' }] } },
+          { param_name: 'customer_name', example: 'مني جمال' }, { param_name: 'store_name', example: 'ALIA FASHION' }, { param_name: 'order_number', example: '#1249' },
+          { param_name: 'products', example: 'سوت شتوي قطعتين جينز - كود 5289 (2XL / Black) × 1' }, { param_name: 'total', example: '1,695' }, { param_name: 'address', example: 'بنها، القليوبية' }] } },
       { type: 'FOOTER', text: 'نشكرك على ثقتك بنا 🤍' },
       { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'تأكيد الطلب' }, { type: 'QUICK_REPLY', text: 'إلغاء الطلب' }] },
     ],
@@ -208,7 +208,7 @@ async function send(req, res, body) {
   if (kind === 'confirm') {
     const m = /^(S|D):(.+)$/.exec(ref); if (!m) return json(res, 400, { ok: false, error: 'ref غلط' });
     const P = (k, max) => ({ type: 'text', parameter_name: k, text: clean(v[k], max) });
-    msg = { to, type: 'template', template: { name: 'order_confirm_ar', language: { code: 'ar' }, components: [
+    msg = { to, type: 'template', template: { name: 'order_confirm_ar_v2', language: { code: 'ar' }, components: [
       { type: 'body', parameters: [P('customer_name', 60), P('store_name', 60), P('order_number', 30), P('products', 300), P('total', 20), P('address', 200)] },
       { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: 'CONFIRM:' + ref }] },
       { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: 'CANCEL:' + ref }] }] } };
