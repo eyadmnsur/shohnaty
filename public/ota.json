@@ -1,5 +1,5 @@
 {
- "version": 1795258955,
+ "version": 1795259637,
  "files": [
   {
    "path": "js/util.js",
@@ -23,8 +23,8 @@
   },
   {
    "path": "js/shopify.js",
-   "sha": "a47fba841ba3b01170e71b3d60ee1be9ca26a894d6c033390550153bc2741653",
-   "size": 11021
+   "sha": "27127b34f37ea88092cfddb40637538cd881aeb77d7185159918a1f4824c657b",
+   "size": 12028
   },
   {
    "path": "js/ai.js",
@@ -98,8 +98,8 @@
   },
   {
    "path": "js/app.js",
-   "sha": "4074bbbb620611f3f951c280c423823d27fc0af8cec286b730c8f3783994b506",
-   "size": 148600
+   "sha": "2569841726f9ecd5ef9dd5d14e53fe2d37ffca816f6ceab4eebfb0ac48119bda",
+   "size": 152342
   }
  ],
  "css": {

@@ -807,7 +807,8 @@ function openShipment(s) {
         <button class="action" id="waBtn">${ic('whatsapp')}واتساب</button>
         <button class="action" id="editBtn">${ic('edit')}تعديل</button>
         ${Kapso.on && Kapso.templates.some(t => t.name === 'order_update_ar' && t.status === 'APPROVED') ? `<button class="action" id="kpUpd">${ic('whatsapp')}ابعت الحالة</button>` : ''}
-        <a class="action" href="${HH_REAL}/admin-area/shippings.php?action=edit&id=${encodeURIComponent(s.id)}" target="_blank">${ic('web')}في الموقع</a>
+        <button class="action" id="siteBtn">${ic('web')}في الموقع</button>
+        ${Shopify.ready ? `<button class="action" id="shopBtn">${ic('bag')}شوبيفاي</button>` : ''}
       </div>
     </div>
     ${isFailed(s) ? `<div class="card card-pad fail-card" id="failCard"><div class="h2">${ic('alert', 'width="18"')} ليه الشحنة رجعت؟</div><div id="failBody">${loading()}</div></div>`
@@ -826,6 +827,8 @@ function openShipment(s) {
     </dl></div>
     <div class="section-title">مسار الشحنة</div><div class="card" id="hist">${loading()}</div>`);
   $('#editBtn', sh.el).onclick = () => { sh.close(); openEdit(s); };
+  $('#siteBtn', sh.el).onclick = () => openHazemPage(s.id, s.consignee);
+  if ($('#shopBtn', sh.el)) $('#shopBtn', sh.el).onclick = () => openShopifyCustomer(s);
   if ($('#kpUpd', sh.el)) $('#kpUpd', sh.el).onclick = async e => { const b = e.currentTarget; b.disabled = true; try { await Kapso.notify(s, s.status.replace(/^\d+\s*-\s*/, ''), false); toast('اتبعتت للعميل ✓', 'ok'); } catch (err) { toast(err.message, 'err'); } b.disabled = false; };
   if ($('#ordBtn', sh.el)) $('#ordBtn', sh.el).onclick = async e => {
     const b = e.currentTarget, old = b.innerHTML; b.disabled = true; b.textContent = 'بدوّر على الأوردر…';
@@ -867,6 +870,42 @@ function openShipment(s) {
       }).catch(() => { const dd = $('#feeDD', sh.el); if (dd) dd.textContent = '—'; });
     }
   }).catch(() => { const h = $('#hist', sh.el); if (h) h.innerHTML = '<div class="empty small">تعذر تحميل المسار</div>'; const fb = $('#failBody', sh.el); if (fb) fb.innerHTML = '<div class="small muted">تعذر التحميل</div>'; });
+}
+
+// The shipment's page on Hazem's site = the customer's data there. Opens already logged in:
+//  - phone app: inside the app (shares the app's session), no second login
+//  - website: through the website's own session
+//  - otherwise: the browser (needs its own login)
+async function openHazemPage(id, name = '') {
+  const path = `/admin-area/shippings.php?action=edit&id=${encodeURIComponent(id)}`;
+  try { await Hazem.page('index.php'); } catch (e) { if (e.code === 'LOCKED') return handleErr(e); }   // refresh the session first
+  const P = window.Capacitor?.Plugins?.HazemView;
+  if (P) { try { return await P.open({ url: HH_REAL + path, email: Hazem.creds?.email || '', password: Hazem.creds?.password || '', title: name || 'حازم حلان' }); } catch {} }
+  window.open((window.SYNC_BASE ? HH_ORIGIN : HH_REAL) + path, '_blank');
+}
+// The customer as Shopify knows them (from the shipment's order): contact, address, order, products, status.
+async function openShopifyCustomer(s) {
+  const sh = sheet('العميل على شوبيفاي', loading());
+  try {
+    const o = await Shopify.orderFull(s.order_id, s.waybill);
+    if (!o) { $('.sheet-b', sh.el).innerHTML = `<div class="card empty">${ic('bag')}<div>مش لاقي أوردر شوبيفاي للشحنة دي</div><div class="small" style="margin-top:6px">الشحنة مالهاش رقم طلب شوبيفاي، أو اتسجلت من غير أوردر.</div></div>`; return; }
+    const a = o.shippingAddress || {}, phone = a.phone || o.phone || s.phone1;
+    const kv = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
+    $('.sheet-b', sh.el).innerHTML = `
+      <div class="card card-pad"><div class="row between"><div><div class="h2">${esc(a.name || s.consignee)}</div><div class="small muted">${esc(o.name)} · ${new Date(o.createdAt).toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+        <span class="badge ${o.displayFinancialStatus === 'PAID' ? 'success' : 'warning'}">${esc(o.displayFinancialStatus || '')}</span></div>
+        <div class="actions" style="margin-top:12px"><a class="action" href="tel:${esc(phone)}">${ic('phone')}اتصال</a><button class="action" id="scWa">${ic('whatsapp')}واتساب</button><button class="action" id="scOpen">${ic('bag')}افتح في شوبيفاي</button><button class="action" id="scHist">${ic('search')}سجل العميل</button></div></div>
+      <div class="card"><dl class="kv">
+        ${kv('الموبايل', phone ? `<span class="ltr">${esc(phone)}</span>` : '')}${kv('الإيميل', o.email ? `<span class="ltr">${esc(o.email)}</span>` : '')}
+        ${kv('العنوان', esc([a.address1, a.address2, a.city, a.province].filter(Boolean).join(' - ')))}
+        ${kv('المبلغ', money(o.totalPriceSet?.shopMoney?.amount) + ' ج.م')}${kv('حالة التجهيز', esc(o.displayFulfillmentStatus || ''))}
+        ${kv('المنتجات', esc(o.lineItems.nodes.map(i => `${i.title}${i.variantTitle ? ' (' + i.variantTitle + ')' : ''} × ${i.quantity}`).join('\n')).replace(/\n/g, '<br>'))}
+        ${kv('ملاحظة', esc(o.note || ''))}${kv('علامات', esc((o.tags || []).join('، ')))}
+      </dl></div>`;
+    $('#scOpen', sh.el).onclick = () => window.open(Shopify.adminUrl(o.id), '_blank');
+    $('#scWa', sh.el).onclick = () => waCompose({ ship: s }, 'confirm');
+    $('#scHist', sh.el).onclick = () => { sh.close(); openCustomerHistory(findPhones(phone)[0] || s.phone1, a.name || s.consignee); };
+  } catch (e) { sh.close(); handleErr(e); }
 }
 
 // Generic edit: render the site's own edit form natively.
@@ -1618,7 +1657,7 @@ function viewMore() {
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
       ${menuItem('edit', 'تغيير بيانات دخول حازم (اليوزر والباسورد)', 'chglogin')}
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.17</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.18</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, chglogin: openChangeLogin, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);

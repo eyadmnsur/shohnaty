@@ -105,6 +105,16 @@ const Shopify = {
     if (!n.length && waybill) n = await find(`tag:HZM-${waybill}`);
     return n[0] || null;
   },
+  // Everything Shopify has about the customer behind a shipment: the order (by number, else by HZM tag) with contact details.
+  async orderFull(orderNo, waybill) {
+    const base = 'id name createdAt note tags displayFinancialStatus displayFulfillmentStatus totalPriceSet { shopMoney { amount } } shippingAddress { name phone address1 address2 city province zip } lineItems(first: 20) { nodes { title variantTitle quantity } }';
+    const run = async (q, f) => (await this.gql(`query($q:String!){ orders(first:5, query:$q){ nodes { ${f} } } }`, { q })).orders.nodes;
+    const get = async q => { try { return await run(q, base + ' email phone'); } catch (e) { if (!/access denied|not approved|protected/i.test(e.message)) throw e; return run(q, base); } };
+    const no = String(orderNo || '').replace(/\D/g, '');
+    let n = no ? (await get(`name:${no}`)).filter(o => o.name.replace(/\D/g, '') === no) : [];
+    if (!n.length && waybill) n = await get(`tag:HZM-${waybill}`);
+    return n[0] || null;
+  },
   // Opens in the Shopify app when it is installed (admin.shopify.com links are app links), else the browser.
   adminUrl(gid) { return `https://admin.shopify.com/store/${this.host().replace(/\.myshopify\.com$/, '')}/orders/${String(gid).split('/').pop()}`; },
   // patch: {name, phone, address, city}; only the given fields change, the rest of the address is kept.
