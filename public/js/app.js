@@ -34,7 +34,7 @@ const CAT_COLOR = { active: '#4b8fd6', delivered: '#29845a', returned: '#d72c0d'
 const state = {
   tab: 'home', period: '30', shipFilter: 'all', shipments: [], shipQuery: '',
   shopTab: 'confirm', orders: [], selected: new Set(), overrides: {}, sectors: null, addBase: null,
-  sentMap: {}, sent: [], shopCount: null,
+  sentMap: {}, sent: [], shopCount: null, shipSort: 'upd',
 };
 
 // ---------- Boot ----------
@@ -277,7 +277,7 @@ async function loadPayAlerts() {
   try {
     const from = new Date(); from.setDate(from.getDate() - 60);
     const [bal, rows] = await Promise.all([Hazem.balance({ items: 300 }), Hazem.shipments({ items: 1000, from: ymd(from), to: ymd(new Date()) })]);
-    const list = underPayments(bal.ops, expectedMap(rows));
+    const list = underPayments(bal.ops, expectedMap(rows)).sort((a, b) => dtVal(b.op.date) - dtVal(a.op.date));
     // Sound + notification for ones not announced yet (shared with the background checker).
     const seenArr = await Store.get('pay_seen', null);
     const seen = new Set(seenArr || []);
@@ -293,7 +293,7 @@ async function loadPayAlerts() {
     $('#payAlerts').innerHTML = `
       <div class="section-title">⚠️ تنبيهات الدفع</div>
       <div class="card alert-card"><div class="card-pad row between"><b>${list.length} عملية العميل دفع فيها أقل</b><span class="badge canary">ناقص ${money(list.reduce((a, x) => a + x.short, 0))} ج.م</span></div>
-      <div class="list" style="box-shadow:none;margin:0">${recent.map((a, i) => `<button class="item ${a.kind === 'ship' && a.op.paid > 0 ? 'canary-row' : ''}" data-pa="${i}"><div class="grow"><div class="row between"><span class="title ltr">${esc(a.op.waybill)}</span><span class="tiny">${esc(a.op.date)}</span></div><div class="small" style="font-weight:600;color:${a.kind === 'ship' && a.op.paid <= 0 ? 'var(--critical)' : 'var(--warning)'}">${esc(a.text)}</div></div></button>`).join('')}</div>
+      <div class="list" style="box-shadow:none;margin:0">${recent.map((a, i) => `<button class="item ${a.kind === 'ship' && a.op.paid > 0 ? 'canary-row' : ''}" data-pa="${i}"><div class="grow"><div class="row between"><span class="title ltr">${esc(a.op.waybill)}</span><span class="tiny">${esc(dt(a.op.date))}</span></div><div class="small" style="font-weight:600;color:${a.kind === 'ship' && a.op.paid <= 0 ? 'var(--critical)' : 'var(--warning)'}">${esc(a.text)}</div></div></button>`).join('')}</div>
       ${list.length > recent.length ? `<button class="btn sm" style="margin:10px" id="allPay">عرض الكل في الحسابات</button>` : ''}</div>`;
     $$('#payAlerts [data-pa]').forEach(b => b.onclick = async () => { const o = recent[b.dataset.pa].op; try { const r = (await Hazem.search(o.waybill)).find(x => x.waybill === o.waybill); if (r) openShipment(r); } catch (e) { handleErr(e); } });
     if ($('#allPay')) $('#allPay').onclick = () => { state.moneyFilter = 'short'; go('money'); };
@@ -550,7 +550,7 @@ function shipList(rows) {
       <div class="grow">
         <div class="row between"><span class="title ellipsis">${esc(s.consignee || '—')}</span><span class="amount">${money(s.cod)} <span class="tiny">ج.م</span></span></div>
         <div class="meta row between" style="margin-top:2px"><span class="ltr">${esc(s.waybill)}</span><span>${esc(s.area)}</span></div>
-        <div class="row between wrap" style="margin-top:6px;gap:6px"><span class="row" style="gap:6px">${statusBadge(s)}${extra.has(s.id) ? `<span class="badge canary">⚠️ مكرر من ${esc(extra.get(s.id).replace(/^[A-Z]+/, ''))}</span>` : ''}</span><span class="tiny">${esc((s.last_change || s.date).slice(0, 16))}</span></div>
+        <div class="row between wrap" style="margin-top:6px;gap:6px"><span class="row" style="gap:6px">${statusBadge(s)}${extra.has(s.id) ? `<span class="badge canary">⚠️ مكرر من ${esc(extra.get(s.id).replace(/^[A-Z]+/, ''))}</span>` : ''}</span><span class="tiny">${esc(dt(s.last_change || s.date))}</span></div>
         ${hasReason(s) ? `<div class="fail-line" data-x="${esc(s.id)}"></div>` : ''}
       </div>
     </button>`).join('')}</div>`;
@@ -1296,8 +1296,8 @@ async function loadCustomerHistory() {
 function historyBadge(phone) {
   const h = state.custHist?.m[phone]; if (!h) return '';
   const open = h.open?.length ? `<span class="badge canary">📦 متسجل على حازم بالفعل (${esc(h.open[0])})</span>` : '';
-  if (h.returned) return open + `<span class="badge critical">⚠️ رفض قبل كده ${h.returned} مرة</span>`;
-  if (h.delivered) return open + `<span class="badge success">استلم قبل كده ${h.delivered}</span>`;
+  if (h.returned) return open + `<button type="button" class="badge critical" data-hist="${esc(phone)}">⚠️ رفض قبل كده ${h.returned} مرة · التفاصيل ›</button>`;
+  if (h.delivered) return open + `<button type="button" class="badge success" data-hist="${esc(phone)}">استلم قبل كده ${h.delivered} · التفاصيل ›</button>`;
   return open;
 }
 // Phones that already have an open shipment on Hazem (to catch double entries).
@@ -1443,19 +1443,25 @@ async function viewMoney() {
       <div class="small" style="opacity:.8">صافي المستحق ليك</div>
       <div style="font-size:30px;font-weight:700">${money(due)} <span style="font-size:15px">ج.م</span></div>
       ${payable != null ? `<div class="small" style="opacity:.9">القابل للتوريد دلوقتي: <b>${money(payable)} ج.م</b></div>` : ''}
-      <div class="tiny" style="opacity:.85;margin-top:8px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px">آخر عملية سجّلتها الشركة: <b>${esc(latest?.date || '—')}</b>${latest ? ` (${esc(latest.type)})` : ''} · النهارده: <b>${todayN}</b> عملية</div>
+      <div class="tiny" style="opacity:.85;margin-top:8px;border-top:1px solid rgba(255,255,255,.15);padding-top:8px">آخر عملية سجّلتها الشركة: <b>${esc(latest?.date ? dt(latest.date) : '—')}</b>${latest ? ` (${esc(latest.type)})` : ''} · النهارده: <b>${todayN}</b> عملية</div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="lbl"><i style="background:${CAT_COLOR.delivered}"></i>المبالغ المحصلة</div><div class="num">${money(pair('المبالغ المحصلة').amount)}</div><div class="sub">${pair('المبالغ المحصلة').count} شحنة</div></div>
-      <div class="stat"><div class="lbl"><i style="background:#6d7175"></i>الدفعات اللي استلمتها</div><div class="num">${money(pair('الدفعات').amount)}</div><div class="sub">${pair('الدفعات').count} دفعة</div></div>
-      <div class="stat"><div class="lbl"><i style="background:${CAT_COLOR.active}"></i>مصاريف شحن التسليم</div><div class="num">${money(pair('تسليم ناجح').amount)}</div><div class="sub">${pair('تسليم ناجح').count} شحنة</div></div>
-      <div class="stat"><div class="lbl"><i style="background:${CAT_COLOR.returned}"></i>مصاريف المرتجعات</div><div class="num">${money(pair('مرتجعات').amount)}</div><div class="sub">${pair('مرتجعات').count} شحنة</div></div>
+      <button class="stat tap" data-mt="collected"><div class="lbl"><i style="background:${CAT_COLOR.delivered}"></i>المبالغ المحصلة</div><div class="num">${money(pair('المبالغ المحصلة').amount)}</div><div class="sub">${pair('المبالغ المحصلة').count} شحنة</div></button>
+      <button class="stat tap" data-mt="payout"><div class="lbl"><i style="background:#6d7175"></i>الدفعات اللي استلمتها</div><div class="num">${money(pair('الدفعات').amount)}</div><div class="sub">${pair('الدفعات').count} دفعة</div></button>
+      <button class="stat tap" data-mt="fees"><div class="lbl"><i style="background:${CAT_COLOR.active}"></i>مصاريف شحن التسليم</div><div class="num">${money(pair('تسليم ناجح').amount)}</div><div class="sub">${pair('تسليم ناجح').count} شحنة</div></button>
+      <button class="stat tap" data-mt="returnfees"><div class="lbl"><i style="background:${CAT_COLOR.returned}"></i>مصاريف المرتجعات</div><div class="num">${money(pair('مرتجعات').amount)}</div><div class="sub">${pair('مرتجعات').count} شحنة</div></button>
     </div>
     <div class="toolbar"><button class="tb" id="mfBtn" style="flex:1"></button></div>
     <div id="opsList"></div>
     <p class="tiny" style="text-align:center">كل العمليات (${bal.ops.length}) من صفحة الرصيد على حازم حلان · العملية بتنزل هنا لما الشركة تقفل حساب الشحنة</p>`;
   // Each category is independent: switching clears the selection.
   moneyBar();
+  // The four cards open their operations: numbered, newest first.
+  const TILE = { collected: ['deliver', 'المبالغ المحصّلة من العملاء'], fees: ['deliver', 'مصاريف شحن التسليم'], payout: ['payout', 'الدفعات اللي استلمتها'], returnfees: ['return', 'مصاريف المرتجعات'] };
+  $$('[data-mt]', v).forEach(b => b.onclick = () => {
+    const [f] = TILE[b.dataset.mt]; state.moneyFilter = f; state.moneyMetric = b.dataset.mt; state.opSel = null;
+    $$('[data-mt]', v).forEach(x => x.classList.toggle('on', x === b)); moneyBar(); renderOps(); $('#opsList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   renderOps();
   syncRecentOps(bal, v);
 }
@@ -1512,7 +1518,7 @@ function moneyBar() {
   const cat = moneyCat();
   b.innerHTML = `<span class="tiny">عرض</span><b>${esc(cat[1])} (${state.balance.ops.filter(cat[2]).length})</b> ▾`;
   b.classList.toggle('on', cat[0] !== 'all');
-  b.onclick = e => dropdown(e.currentTarget, MONEY_FILTERS.map(([k, l, fn]) => [k, l, null, fn ? String(state.balance.ops.filter(fn).length) : null]), cat[0], k => { state.moneyFilter = k; state.opSel = null; moneyBar(); renderOps(); }, 'اعرض');
+  b.onclick = e => dropdown(e.currentTarget, MONEY_FILTERS.map(([k, l, fn]) => [k, l, null, fn ? String(state.balance.ops.filter(fn).length) : null]), cat[0], k => { state.moneyFilter = k; state.moneyMetric = null; state.opSel = null; $$('[data-mt]').forEach(x => x.classList.remove('on')); moneyBar(); renderOps(); }, 'اعرض');
 }
 function renderOps() {
   const cat = moneyCat();
@@ -1531,17 +1537,19 @@ function renderOps() {
       <div class="row between wrap" style="margin-top:10px;gap:6px">${all?.amount != null ? `<span class="badge payout">إجمالي كل التوريدات: ${money(all.amount)} (${all.count})</span>` : ''}${payable != null ? `<span class="badge">لسه ليك يتورّد: ${money(payable)} ج.م</span>` : ''}</div>
     </div>`;
   })() : '';
-  box.innerHTML = `${pay}
+  const mt = state.moneyMetric && ({ collected: ['المبالغ المحصّلة', o => o.value], fees: ['مصاريف شحن التسليم', o => o.fee], payout: ['إجمالي التوريدات', o => o.value], returnfees: ['مصاريف المرتجعات', o => o.fee] })[state.moneyMetric];
+  const metricNote = mt ? `<div class="metric-note"><b>${esc(mt[0])}</b> — ${ops.length} عملية · الإجمالي <b>${money(ops.reduce((a, o) => a + mt[1](o), 0))} ج.م</b> · من الأحدث للأقدم</div>` : '';
+  box.innerHTML = `${metricNote}${pay}
     ${exportable && cat[0] !== 'payout' ? `<div class="banner warning" style="align-items:center"><div class="grow small"><b>${exportable} عملية في «${esc(cat[1])}»</b> — صدّرهم شيت لإدارة شركة الشحن</div><button class="btn sm" id="opsExportAll">📤 تصدير</button></div>` : ''}
-    <div class="tiny" style="margin:0 4px 6px">${ops[0]?.date ? `آخر تحديث في «${esc(cat[1])}»: <b>${esc((dtVal(ops[0].shipDate) > dtVal(ops[0].date) ? ops[0].shipDate : ops[0].date).slice(0, 16))}</b>` : ''}${cat[0] === 'payout' ? '' : ' · ضغطة مطولة على أي عملية عشان تحدد وتصدّر'}</div>
+    <div class="tiny" style="margin:0 4px 6px">${ops[0]?.date ? `آخر تحديث في «${esc(cat[1])}»: <b>${esc(dt(dtVal(ops[0].shipDate) > dtVal(ops[0].date) ? ops[0].shipDate : ops[0].date))}</b>` : ''}${cat[0] === 'payout' ? '' : ' · ضغطة مطولة على أي عملية عشان تحدد وتصدّر'}</div>
     <div class="list">${ops.map((o, i) => `
     <button class="item ${o.isPayout ? 'payout-row' : shipShort(o) > 0 ? 'canary-row' : ''} ${state.opSel?.has(o) ? 'selected' : ''}" data-op="${i}">
       ${state.opSel ? `<span class="check ${state.opSel.has(o) ? 'on' : ''}"></span>` : ''}
       <div class="grow">
-      <div class="row between"><span class="title">${esc(o.isPayout ? 'دفعة ' + (o.type || '') : o.type)}</span><span class="amount">${money(o.value)} <span class="tiny">ج.م</span></span></div>
+      <div class="row between"><span class="title"><span class="serial">${i + 1}</span>${esc(o.isPayout ? 'دفعة ' + (o.type || '') : o.type)}</span><span class="amount">${money(state.moneyMetric === 'fees' ? o.fee : o.value)} <span class="tiny">ج.م</span></span></div>
       <div class="meta row between"><span class="ltr">${esc(o.waybill || o.from || '')}</span><span>${esc(o.area)}</span></div>
-      <div class="row between wrap" style="margin-top:6px;gap:6px">${o.isPayout ? `<span class="badge payout">💵 توريد تحصيل${o.confirm === 'نعم' ? ' · اتأكد ✓' : o.confirm ? ' · لسه متأكدش' : ''}</span>` : o.isReturn ? feeBadge(o) : o.waybill ? (shipShort(o) > 0 ? `<span class="badge canary">${/جزئي|استبدال/.test(o.type) ? 'جزئي/استبدال · ' : ''}اتحصّل ${money(o.value)} والشحن ${money(o.fee)} · ناقص ${money(shipShort(o))}</span>` : `<span class="badge">شحن ${money(o.fee)}</span>`) : ''}<span class="tiny">${esc(o.date)}</span></div>
-      ${o.shipDate && dtVal(o.shipDate) > dtVal(o.date) ? `<div class="tiny" style="margin-top:4px">آخر تحديث للشحنة: <b>${esc(o.shipDate.slice(0, 16))}</b></div>` : ''}
+      <div class="row between wrap" style="margin-top:6px;gap:6px">${o.isPayout ? `<span class="badge payout">💵 توريد تحصيل${o.confirm === 'نعم' ? ' · اتأكد ✓' : o.confirm ? ' · لسه متأكدش' : ''}</span>` : o.isReturn ? feeBadge(o) : o.waybill ? (shipShort(o) > 0 ? `<span class="badge canary">${/جزئي|استبدال/.test(o.type) ? 'جزئي/استبدال · ' : ''}اتحصّل ${money(o.value)} والشحن ${money(o.fee)} · ناقص ${money(shipShort(o))}</span>` : `<span class="badge">شحن ${money(o.fee)}</span>`) : ''}<span class="tiny">${esc(dt(o.date))}</span></div>
+      ${o.shipDate && dtVal(o.shipDate) > dtVal(o.date) ? `<div class="tiny" style="margin-top:4px">آخر تحديث للشحنة: <b>${esc(dt(o.shipDate))}</b></div>` : ''}
     </div></button>`).join('')}</div>
     <div style="height:${state.opSel ? 140 : 0}px"></div>`;
   if ($('#opsExportAll')) $('#opsExportAll').onclick = () => exportComplaint(ops.filter(o => o.waybill), cat[1]);
@@ -1610,7 +1618,7 @@ function viewMore() {
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
       ${menuItem('edit', 'تغيير بيانات دخول حازم (اليوزر والباسورد)', 'chglogin')}
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.16</p>`;
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.17</p>`;
   const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, chglogin: openChangeLogin, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);

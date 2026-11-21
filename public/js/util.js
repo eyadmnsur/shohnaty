@@ -88,3 +88,12 @@ const normDigits = x => String(x ?? '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦
   new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('DOMContentLoaded', scan);
 })();
+
+// "2026-11-18 08:39 PM" -> "18-11-2026 8:39 م" (kept left-to-right so it never scrambles inside Arabic text)
+function dt(s) {
+  const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM)?)?/i);
+  if (!m) return String(s || '');
+  let out = `${m[3]}-${m[2]}-${m[1]}`;
+  if (m[4] != null) out += ` ${Number(m[4])}:${m[5]}${m[6] ? (/PM/i.test(m[6]) ? ' م' : ' ص') : ''}`;
+  return '\u2066' + out + '\u2069';
+}

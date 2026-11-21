@@ -252,3 +252,9 @@ input.switch:checked::after { inset-inline-start: 21px; }
 .pw-wrap { position: relative; display: block; }
 .pw-wrap > input { padding-inline-end: 46px; }
 .pw-eye { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 20px; line-height: 1; padding: 8px; min-height: 0; opacity: .75; }
+
+.serial { display: inline-grid; place-items: center; min-width: 24px; height: 22px; padding: 0 6px; margin-inline-end: 8px; border-radius: 11px; background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 700; }
+button.badge { border: 0; font: inherit; cursor: pointer; }
+.stat.tap { text-align: start; cursor: pointer; }
+.stat.tap.on { outline: 2px solid var(--accent); }
+.metric-note { margin: 0 4px 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }

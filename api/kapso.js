@@ -194,7 +194,12 @@ async function status(req, res) {
     for (const t of TEMPLATES) {
       const ex = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates?name=${t.name}`);
       const f = ex.ok && ((ex.data && ex.data.data) || []).find(x => x.name === t.name);
-      out.templates.push({ name: t.name, status: f ? (f.status || 'UNKNOWN') : (ex.ok ? 'MISSING' : 'ERROR'), reason: f && f.rejected_reason && f.rejected_reason !== 'NONE' ? f.rejected_reason : undefined });
+      if (!f && ex.ok) {   // not created yet (e.g. a newer version of the template): submit it to Meta now
+        const cr = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates`, { method: 'POST', body: t });
+        out.templates.push({ name: t.name, status: cr.ok ? ((cr.data && cr.data.status) || 'PENDING') : 'ERROR', reason: cr.ok ? undefined : errText(cr) });
+        continue;
+      }
+      out.templates.push({ name: t.name, status: f ? (f.status || 'UNKNOWN') : 'ERROR', reason: f && f.rejected_reason && f.rejected_reason !== 'NONE' ? f.rejected_reason : undefined });
     }
   }
   json(res, 200, out);

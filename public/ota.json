@@ -1,10 +1,10 @@
 {
- "version": 1795177174,
+ "version": 1795258955,
  "files": [
   {
    "path": "js/util.js",
-   "sha": "db797bc5a2f84114353448929f02611e6dc3e3e5a298de7e42a066c0782c13c4",
-   "size": 4165
+   "sha": "c12171c6b25044a9a70da404c825725e002337107c5acfbf7ca1de92a1c4b443",
+   "size": 4608
   },
   {
    "path": "js/sync.js",
@@ -58,13 +58,18 @@
   },
   {
    "path": "js/shoporders.js",
-   "sha": "1cdc393f020aa6a76b1e5dad9b326c97224f6cb68e7e7a313f7eccf19922d658",
-   "size": 11725
+   "sha": "131a88529534d48b7e01d8d794fd6ebb8dd74e7b592c1511a50dc826a8cbce35",
+   "size": 11804
   },
   {
    "path": "js/kapso.js",
    "sha": "256bc78b97ddfb3f3751f2c575b417e11112c5211c850f69b47e5769f45faf84",
    "size": 16408
+  },
+  {
+   "path": "js/customer.js",
+   "sha": "fa633dda3ad883b9b99edebfd3aac3903e0e033d8e850e6d879598c1b8eeb011",
+   "size": 7229
   },
   {
    "path": "js/deeplink.js",
@@ -93,13 +98,13 @@
   },
   {
    "path": "js/app.js",
-   "sha": "eb662d1960bd5953e78d60f7b1d3cc35393a8f5f3152cf43bd39ec8de4bd6430",
-   "size": 146903
+   "sha": "4074bbbb620611f3f951c280c423823d27fc0af8cec286b730c8f3783994b506",
+   "size": 148600
   }
  ],
  "css": {
   "path": "css/app.css",
-  "sha": "76296dd6f951d2dc964699805f7d6486787b0eb86c73a173f77074d26799a415",
-  "size": 20692
+  "sha": "913a9a563f3a3ca05b51594eb76e680a600aea6e9388c3e2c8b6a8887a42c4ea",
+  "size": 21212
  }
 }

@@ -61,6 +61,7 @@ async function openShopOrder(o, tab = 'confirm', after = () => viewShop()) {
       ${o.note ? `<dt>ملاحظة</dt><dd>${esc(o.note)}</dd>` : ''}
       <dt>تاريخ الأوردر</dt><dd>${new Date(o.createdAt).toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long' })}</dd>
     </dl></div>
+    <div id="soCust"></div>
     <div id="soLink"></div>`,
     tab === 'confirm'
       ? [['إلغاء الأوردر', async b => { if (!confirm(`تلغي ${o.name} على شوبيفاي؟`)) return; b.disabled = true; try { await Shopify.cancel(o.id); toast('اتلغى', 'ok'); sh.close(); after(); } catch (e) { b.disabled = false; handleErr(e); } }],
@@ -73,6 +74,7 @@ async function openShopOrder(o, tab = 'confirm', after = () => viewShop()) {
   };
   $('#soEdit', sh.el).onclick = () => { sh.close(); editShopOrder(o, after); };
   $('#soShop', sh.el).onclick = () => window.open(Shopify.adminUrl(o.id), '_blank');
+  Customer.inline(s.phone_1, $('#soCust', sh.el));
   // Is there already a shipment for this customer / order on Hazem? Offer to link it.
   try {
     const mine = await Hazem.shipments({ order_id: cleanOrderNo(o), items: 10 });
