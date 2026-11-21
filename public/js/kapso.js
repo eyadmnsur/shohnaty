@@ -114,7 +114,7 @@ async function localAlert(a) {
 async function openKapsoSettings() {
   const sh = sheet('واتساب API (كابسو)', loading(), []);
   const body = $('.sheet-b', sh.el);
-  const st = { PENDING: ['⏳ مستني مراجعة ميتا', 'attention'], APPROVED: ['✅ معتمد وجاهز', 'success'], REJECTED: ['❌ ميتا رفضه', 'critical'], MISSING: ['مش موجود', 'warning'], ERROR: ['تعذر الفحص', 'warning'], DISABLED: ['⛔ موقوف', 'critical'], UNKNOWN: ['؟', ''] };
+  const st = { PENDING: ['⏳ مستني مراجعة ميتا', 'attention'], APPROVED: ['✅ معتمد وجاهز', 'success'], REJECTED: ['❌ ميتا رفضه', 'critical'], MISSING: ['مش موجود', 'warning'], ERROR: ['❌ ميتا رفض الإرسال', 'critical'], DISABLED: ['⛔ موقوف', 'critical'], UNKNOWN: ['؟', ''] };
   let showForm = false;
   const paint = async () => {
     if (!(await Kapso.conf())) {
@@ -157,7 +157,7 @@ async function openKapsoSettings() {
     body.innerHTML = `
       <div class="banner success small" style="display:block">✅ متصل${Kapso.name ? ' — <b>' + esc(Kapso.name) + '</b>' : ''}. ردود العملاء بتوصل تلقائي.</div>
       <div class="section-title">القوالب</div>
-      <div class="list">${Kapso.templates.map(t => { const [l, c] = st[t.status] || st.UNKNOWN; return `<div class="item"><div class="grow"><b class="ltr">${esc(t.name)}</b>${t.reason ? `<div class="tiny">${esc(t.reason)}</div>` : ''}</div><span class="badge ${c}">${l}</span></div>`; }).join('')}</div>
+      <div class="list">${Kapso.templates.map(t => { const [l, c] = st[t.status] || st.UNKNOWN; return `<div class="item"><div class="grow"><b class="ltr">${esc(t.name)}</b>${t.reason ? `<div class="tiny" style="white-space:pre-wrap">${esc(t.reason)}</div>` : ''}${t.variant && t.variant !== 'كامل' ? `<div class="tiny">اتقدّم بصيغة مبسّطة (${esc(t.variant)}) عشان ميتا ترضى بيه</div>` : ''}${t.status === 'ERROR' && t.tried && t.tried.length ? `<div class="tiny ltr" style="white-space:pre-wrap;opacity:.7">${esc(t.tried.join('\n'))}</div>` : ''}</div><span class="badge ${c}">${l}</span></div>`; }).join('')}</div>
       <div class="tiny" style="margin:6px 4px">ميتا بتراجع القالب (غالبًا خلال ساعات، وأحيانًا لحد 24 ساعة). لحد ما يتعتمد، التأكيد بيفضل بالطريقة العادية.</div>
       <button class="btn block" id="kpRef">🔄 تحديث حالة القوالب</button>
       <div class="section-title">لما العميل يرد</div>
@@ -166,7 +166,7 @@ async function openKapsoSettings() {
       <div class="list menu">${sw('notifyShipped', 'لما الأوردر يتبعت لحازم', 'رسالة «الشحنة اتسجلت» مع رقم البوليصة')}${sw('notifyDelivered', 'لما الشحنة تتسلّم', 'رسالة «تم التسليم بنجاح»')}</div>
       <div class="tiny" style="margin:6px 4px">كل رسالة قالب بتتحاسب من ميتا حسب الدولة (فئة Utility).</div>
       <button class="btn block" id="kpAgain" style="margin-top:8px">إعادة الربط بمفتاح جديد</button>`;
-    $('#kpRef', sh.el).onclick = paint;
+    $('#kpRef', sh.el).onclick = async e => { const b = e.currentTarget; b.disabled = true; b.innerHTML = '<div class="spinner"></div> بيتحقق ويعيد الإرسال لميتا…'; await paint(); const bad = Kapso.templates.filter(t => ['ERROR', 'REJECTED'].includes(t.status)).length; toast(bad ? 'لسه فيه قالب مشكلته مستمرة — شوف السبب تحت اسمه' : 'اتحدّث ✅', bad ? 'err' : 'ok'); };
     $('#kpAgain', sh.el).onclick = () => { showForm = true; paint(); };
     $$('[data-kp]', sh.el).forEach(c => c.onchange = async () => { const q = await Kapso.prefs(); q[c.dataset.kp] = c.checked; await Store.set('kapso_prefs', q); toast(c.checked ? 'اتفعّل' : 'اتقفل'); });
   };

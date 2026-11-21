@@ -51,7 +51,45 @@ async function kapso(cfg, path, opts = {}) {
 const sendMsg = (cfg, body) => kapso(cfg, `/meta/whatsapp/${META}/${cfg.phoneNumberId}/messages`, { method: 'POST', body: { messaging_product: 'whatsapp', recipient_type: 'individual', ...body } });
 const refMerge = async (ref, patch) => { if (!ref) return; const [raw] = await kv.redis([['HGET', REFS, ref]]); let o = {}; try { o = JSON.parse(raw || '{}'); } catch {} await kv.redis([['HSET', REFS, ref, JSON.stringify({ ...o, ...patch })]]); };
 const pushEvent = async ev => { await kv.redis([['LPUSH', EVENTS, JSON.stringify({ t: Date.now(), ...ev })], ['LTRIM', EVENTS, 0, 499]]); };
-const errText = r => (r.data && (r.data.error?.message || r.data.error || r.data.message)) ? String(r.data.error?.message || r.data.error || r.data.message) : `HTTP ${r.status}`;
+const errText = r => {
+  const d = r.data || {}, e = (typeof d.error === 'object' && d.error) || {};
+  const parts = [e.error_user_title, e.error_user_msg, e.message || (typeof d.error === 'string' ? d.error : '') || d.message, e.error_data && e.error_data.details].filter(Boolean);
+  return parts.length ? [...new Set(parts.map(String))].join(' — ') : `HTTP ${r.status}`;
+};
+
+// Meta rejects a template with a vague "Invalid parameter" for many small reasons (footer emoji, odd example values, symbols…).
+// So a template is submitted as written first, then — only if Meta refuses — in progressively plainer forms. Wording stays the same as far as possible.
+const plainEx = s => String(s).replace(/[#×«»]/g, '').replace(/,/g, '').replace(/\s+/g, ' ').trim();
+const noEmoji = s => s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/ {2,}/g, ' ').trim();
+function variantsOf(t) {
+  const map = f => ({ ...t, components: t.components.map(f).filter(Boolean) });
+  const nofooter = c => c.type === 'FOOTER' ? null : c;
+  const simpleEx = c => c.type === 'BODY' && c.example ? { ...c, text: c.text.replace(/[«»]/g, '"'), example: { body_text_named_params: c.example.body_text_named_params.map(p => ({ ...p, example: plainEx(p.example) })) } } : c;
+  const noEmojiBody = c => c.type === 'BODY' ? { ...simpleEx(c), text: noEmoji(simpleEx(c).text) } : c;
+  const out = [['كامل', t]];
+  if (t.components.some(c => c.type === 'FOOTER')) out.push(['بدون الفوتر', map(nofooter)]);
+  out.push(['أمثلة مبسطة', map(c => nofooter(c) && simpleEx(c))]);
+  out.push(['بدون إيموجي', map(c => nofooter(c) && noEmojiBody(c))]);
+  const seen = new Set(); return out.filter(([, v]) => { const k = JSON.stringify(v); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+// Submit a template to Meta, falling back through plainer variants. Returns { ok, status, reason, variant, tried }.
+async function submitTemplate(cfg, t) {
+  const tried = []; let last = '';
+  for (const [label, v] of variantsOf(t)) {
+    const cr = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates`, { method: 'POST', body: v });
+    if (cr.ok) return { ok: true, status: (cr.data && cr.data.status) || 'PENDING', variant: label, tried };
+    last = errText(cr); tried.push(label + ': ' + last);
+    if (cr.status === 401 || cr.status === 403) break;                       // a key problem, not a template problem
+    if (/already exist|already been|duplicate|موجود/i.test(last)) return { ok: true, status: 'PENDING', variant: label, tried };
+  }
+  return { ok: false, status: 'ERROR', reason: last, tried };
+}
+// Find a template by name; one that was refused/never created (ERROR, or DISABLED-less missing) is submitted again.
+async function lookupTemplate(cfg, t) {
+  const ex = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates?name=${t.name}`);
+  const f = ex.ok && ((ex.data && ex.data.data) || []).find(x => x.name === t.name);
+  return { ex, f };
+}
 
 // ---------- webhook ----------
 async function replyAck(cfg, phone, text) { try { await sendMsg(cfg, { to: phone, type: 'text', text: { body: text, preview_url: false } }); } catch {} }
@@ -175,11 +213,10 @@ async function setup(req, res, body) {
   // templates: create the missing ones
   if (cfg.wabaId) {
     for (const t of TEMPLATES) {
-      const ex = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates?name=${t.name}`);
-      const found = ex.ok && ((ex.data && ex.data.data) || []).find(x => x.name === t.name);
+      const { f: found } = await lookupTemplate(cfg, t);
       if (found) { steps.templates.push({ name: t.name, status: found.status || 'UNKNOWN' }); continue; }
-      const cr = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates`, { method: 'POST', body: t });
-      steps.templates.push({ name: t.name, status: cr.ok ? ((cr.data && cr.data.status) || 'PENDING') : 'ERROR', error: cr.ok ? undefined : errText(cr) });
+      const cr = await submitTemplate(cfg, t);
+      steps.templates.push({ name: t.name, status: cr.status, error: cr.ok ? undefined : cr.reason, variant: cr.variant, tried: cr.tried });
     }
   } else steps.templatesError = 'مش قادر أعرف WhatsApp Business Account ID';
   await kv.redis([['HSET', H_CFG, 'cfg', vault.seal(cfg)]]);
@@ -192,14 +229,14 @@ async function status(req, res) {
   const out = { connected: true, phoneNumberId: cfg.phoneNumberId, name: cfg.displayName || '', waba: cfg.wabaId || '', templates: [] };
   if (cfg.wabaId) {
     for (const t of TEMPLATES) {
-      const ex = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates?name=${t.name}`);
-      const f = ex.ok && ((ex.data && ex.data.data) || []).find(x => x.name === t.name);
-      if (!f && ex.ok) {   // not created yet (e.g. a newer version of the template): submit it to Meta now
-        const cr = await kapso(cfg, `/meta/whatsapp/${META}/${cfg.wabaId}/message_templates`, { method: 'POST', body: t });
-        out.templates.push({ name: t.name, status: cr.ok ? ((cr.data && cr.data.status) || 'PENDING') : 'ERROR', reason: cr.ok ? undefined : errText(cr) });
+      const { ex, f } = await lookupTemplate(cfg, t);
+      if (!f) {   // never created / earlier attempt refused: submit it to Meta now (every refresh press tries again)
+        if (!ex.ok) { out.templates.push({ name: t.name, status: 'ERROR', reason: 'تعذر قراءة القوالب من كابسو: ' + errText(ex) }); continue; }
+        const cr = await submitTemplate(cfg, t);
+        out.templates.push({ name: t.name, status: cr.status, variant: cr.variant, reason: cr.ok ? undefined : cr.reason, tried: cr.tried });
         continue;
       }
-      out.templates.push({ name: t.name, status: f ? (f.status || 'UNKNOWN') : 'ERROR', reason: f && f.rejected_reason && f.rejected_reason !== 'NONE' ? f.rejected_reason : undefined });
+      out.templates.push({ name: t.name, status: f.status || 'UNKNOWN', reason: f.rejected_reason && f.rejected_reason !== 'NONE' ? f.rejected_reason : undefined });
     }
   }
   json(res, 200, out);
