@@ -20,6 +20,48 @@ Shopify.createOrder = async function (s, items, tags) {
   return d.orderCreate.order;
 };
 
+// Reads an Excel/CSV sheet of orders (any reasonable headers, Arabic or English) into the same shape the chat extractor returns.
+// Returns { orders, skipped } — nothing is sent anywhere; the orders land in the review list to be edited first.
+function sheetToWaOrders(buf) {
+  const wb = XLSX.read(buf, { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const D = s => String(s ?? '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).trim();
+  const hi = rows.slice(0, 15).findIndex(r => r.some(c => /phone|mobile|موبايل|تليفون|هاتف|رقم الهاتف|جوال/i.test(String(c))) && r.filter(c => String(c).trim()).length >= 3);
+  if (hi < 0) throw new Error('مش لاقي صف العناوين — لازم يبقى فيه عمود للموبايل واسم العميل');
+  const H = rows[hi].map(c => clean(String(c)));
+  const find = (re, not) => H.findIndex((c, i) => re.test(c) && !(not && not.test(c)));
+  const col = {
+    name: find(/consignee|^name$|customer|اسم|الاسم|العميل|المرسل/i),
+    phone1: find(/phone_?1|mobile|موبايل|تليفون|هاتف|جوال|phone/i, /2|ثاني|تاني|اضافي|إضافي/),
+    phone2: find(/phone_?2|(موبايل|تليفون|هاتف|جوال|رقم).*(2|ثاني|تاني|اضافي|إضافي)/i),
+    address: find(/address|العنوان|عنوان/i),
+    city: find(/city|governorate|province|المحافظة|محافظة|المدينة/i),
+    area: find(/^area$|district|المنطقة|منطقة/i),
+    cod: find(/^cod$|total|price|amount|التحصيل|الإجمالي|الاجمالي|المبلغ|السعر|الاجمالى/i),
+    product: find(/product|item|description|content|المنتج|الصنف|الوصف|البضاعة|المحتوى|وصف/i),
+    qty: find(/qty|quantity|الكمية|كمية|العدد/i),
+    notes: find(/note|ملاحظ/i),
+    order: find(/order|رقم الطلب|رقم الاوردر|رقم الأوردر/i, /phone|mobile/i),
+  };
+  if (col.phone1 < 0) throw new Error('مش لاقي عمود الموبايل');
+  const orders = []; let skipped = 0;
+  for (const r of rows.slice(hi + 1)) {
+    if (!r.some(c => String(c).trim())) continue;
+    const g = k => (col[k] >= 0 ? clean(D(r[col[k]])) : '');
+    const ph = k => { let d = g(k).replace(/\D/g, ''); if (/^1[0125]\d{8}$/.test(d)) d = '0' + d; return d; };
+    const phones = [ph('phone1'), ph('phone2')].filter(Boolean);
+    if (!phones.length && !g('name')) { skipped++; continue; }
+    const cod = Number(g('cod').replace(/[^\d.]/g, ''));
+    const miss = [];
+    orders.push({
+      customer_name: g('name'), phones, address: g('address'), city_area: g('area'), governorate: g('city'),
+      product: [g('product'), col.qty >= 0 && Number(g('qty')) > 1 ? '×' + g('qty') : ''].filter(Boolean).join(' '),
+      items: [], total_to_collect: cod > 0 ? cod : null, notes: g('notes'), missing: miss, order_ref: g('order'),
+    });
+  }
+  return { orders, skipped };
+}
+
 function waToShipment(o) {
   const items = o.items || [];
   const sum = items.reduce((a, i) => a + (i.unit_price || 0) * (i.quantity || 1), 0);
@@ -34,6 +76,7 @@ function waToShipment(o) {
     product_name: items.map(i => `${i.name || ''}${i.code ? ' كود ' + i.code : ''}${[i.size, i.color].filter(Boolean).length ? ' (' + [i.size, i.color].filter(Boolean).join(' / ') + ')' : ''}${i.quantity > 1 ? ' ×' + i.quantity : ''}`.trim()).join(' + '),
     quantity: String(items.reduce((a, i) => a + (i.quantity || 1), 0) || 1),
     notes: o.notes || '', service_type: '1', order_id: '',
+    ...(!items.length && o.product ? { product_name: o.product } : {}),
   };
 }
 
@@ -51,6 +94,9 @@ async function openWaOrders(opts = {}) {
         <label class="btn block" style="border:1.5px dashed var(--border-strong);box-shadow:none">${ic('upload')} أو ارفع صور شاشة من الشات
           <input type="file" id="waImgs" accept="image/*" multiple hidden></label>
         <div class="row wrap" id="waThumbs" style="gap:6px;margin-top:8px"></div>
+        <label class="btn block" style="border:1.5px dashed var(--border-strong);box-shadow:none;margin-top:10px">${ic('file')} 📊 ارفع أوردرات بشيت إكسيل (تراجعها وتعدّلها قبل الإرسال)
+          <input type="file" id="waXls" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label>
+        <div class="tiny" style="margin-top:4px">أي شيت فيه أعمدة: الاسم، الموبايل، العنوان، المحافظة، المنطقة، المبلغ (المنتج والملاحظات اختياري). كل صف بيتحوّل أوردر تعدّله وبعدين تبعته لحازم.</div>
       </div>
       <button class="btn primary block" id="waGo">✨ طلّع الأوردرات</button>
       <div class="tiny" style="text-align:center;margin-top:6px" id="waVia"></div>
@@ -108,6 +154,15 @@ async function openWaOrders(opts = {}) {
     $('#waThumbs', sh.el).innerHTML = imgs.map((im, i) => `<div style="position:relative"><img src="${im.preview}" style="width:56px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"><button data-rm="${i}" class="badge critical" style="position:absolute;top:-6px;left:-6px;border:0">✕</button></div>`).join('');
     $$('[data-rm]', sh.el).forEach(b => b.onclick = () => { imgs.splice(b.dataset.rm, 1); $('#waImgs', sh.el).dispatchEvent(new Event('change')); });
     e.target.value = '';
+  };
+  $('#waXls', sh.el).onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const { orders, skipped } = sheetToWaOrders(await f.arrayBuffer());
+      if (!orders.length) return toast('الشيت مفيهوش أوردرات', 'err');
+      await addOrders(orders);
+      if (skipped) toast(`اتخطّى ${skipped} صف فاضي`);
+    } catch (er) { toast(er.message || 'مقدرتش أقرا الشيت', 'err'); }
   };
   $('#waGo', sh.el).onclick = async () => {
     const text = $('#waText', sh.el).value;
