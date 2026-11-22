@@ -1645,7 +1645,7 @@ function viewMore() {
     <div class="list menu">${menuItem('bag', Shopify.ready ? 'إعدادات ربط شوبيفاي' : 'ربط متجر شوبيفاي', 'shop')}
       <label class="item" style="align-items:center"><span class="ico">${ic('check')}</span><span class="grow"><b>علّم الأوردر «مدفوع» تلقائي</b><div class="tiny">لما الشركة تسجّل تسليم ناجح كامل (مش جزئي)</div></span><input type="checkbox" id="autoPaidToggle" class="switch"></label></div>
     <div class="section-title">أوردرات واتساب وماسنجر</div>
-    <div class="list menu">${menuItem('plus', 'أوردر جديد من الشات (صور أو نص)', 'wao')}${menuItem('whatsapp', 'واتساب والرسايل الجاهزة', 'wa')}${menuItem('bell', 'واتساب API (كابسو): تأكيد بزرارين وردود تلقائية', 'kapso')}${menuItem('gear', 'الذكاء الاصطناعي لقراءة الشات (Claude / Gemini)', 'ai')}
+    <div class="list menu">${menuItem('plus', 'أوردر جديد من الشات (صور أو نص)', 'wao')}${menuItem('close', 'الأوردرات اللي اتضافت (مراجعة ومسح)', 'recent')}${menuItem('whatsapp', 'واتساب والرسايل الجاهزة', 'wa')}${menuItem('bell', 'واتساب API (كابسو): تأكيد بزرارين وردود تلقائية', 'kapso')}${menuItem('gear', 'الذكاء الاصطناعي لقراءة الشات (Claude / Gemini)', 'ai')}
       <label class="item" style="align-items:center"><span class="ico">${ic('bag')}</span><span class="grow"><b>سجّلها كأوردرات على شوبيفاي كمان</b><div class="tiny">عشان كل المبيعات والتقارير تبقى في مكان واحد</div></span><input type="checkbox" id="waShopToggle" class="switch"></label></div>
     <div class="section-title">التنبيهات</div>
     <div class="list menu">${menuItem('bell', 'مركز التنبيهات', 'center')}${menuItem('alert', 'إعدادات التنبيهات (مرتجع، تأجيل، دفع أقل، أوردرات…)', 'alerts')}</div>
@@ -1657,8 +1657,8 @@ function viewMore() {
       <label class="item" style="align-items:center"><span class="grow"><b>اطلب بيانات الدخول كل مرة أفتح التطبيق</b><div class="tiny">مقفول = مايطلبش (الوضع الطبيعي). مفعّل = شاشة الدخول تظهر وبياناتك مكتوبة، وتدوس دخول</div></span><input type="checkbox" id="lpAsk" class="switch"></label>
       ${menuItem('edit', 'تغيير بيانات دخول حازم (اليوزر والباسورد)', 'chglogin')}
       ${menuItem('logout', 'تسجيل الخروج', 'logout')}</div>
-    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.20</p>`;
-  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, ai: () => openAiSettings(), backup: openBackup, chglogin: openChangeLogin, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
+    <p class="tiny" style="text-align:center">شحناتي · الإصدار 4.21</p>`;
+  const acts = { add: () => openAdd(), upload: openUpload, export: () => go('ships'), site: () => window.open(HH_REAL + '/admin-area/index.php', '_blank'), shop: openShopSettings, wa: openWaSettings, wao: openWaOrders, recent: openRecentOrders, ai: () => openAiSettings(), backup: openBackup, chglogin: openChangeLogin, kapso: openKapsoSettings, retsheet: openReturnsReport, sync: openSyncSetup, center: openAlertCenter, alerts: openAlertSettings,
     logout: async () => { if (!confirm('تسجيل الخروج؟')) return; await Hazem.logout(); await Store.del('creds'); renderLogin('', null); } };
   $$('.menu [data-m]').forEach(b => b.onclick = acts[b.dataset.m]);
   Store.get('wa_to_shopify', true).then(v => { const t = $('#waShopToggle'); if (!t) return; t.checked = v !== false; t.onchange = () => Store.set('wa_to_shopify', t.checked); });

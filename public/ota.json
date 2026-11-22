@@ -1,5 +1,5 @@
 {
- "version": 1795358306,
+ "version": 1795358664,
  "files": [
   {
    "path": "js/util.js",
@@ -38,8 +38,13 @@
   },
   {
    "path": "js/waorders.js",
-   "sha": "e4584875f21d488fafb0f273276e8563c9f526c0f6a5b8ee1f4d32f7edf20ae4",
-   "size": 24079
+   "sha": "c9bbc3890c2e6cd30611cc4ab3b973623de6da8fe97db3b165955ec6985136f8",
+   "size": 24280
+  },
+  {
+   "path": "js/recent.js",
+   "sha": "4372204271ed2c3bcb0231b93e7da02efe35df77154e0b5f5fbce680574b3dcd",
+   "size": 8104
   },
   {
    "path": "js/waflow.js",
@@ -98,8 +103,8 @@
   },
   {
    "path": "js/app.js",
-   "sha": "02dd4e353888b34b0116825d3ef0746e6f9f005591f67435f93664f6cf00b27e",
-   "size": 152342
+   "sha": "874beda3413da0fe305c64b04a6ad85f2986edd067716266d6fdc8cb840aa2d2",
+   "size": 152466
   }
  ],
  "css": {

@@ -96,6 +96,7 @@ async function openWaOrders(opts = {}) {
         <div class="row wrap" id="waThumbs" style="gap:6px;margin-top:8px"></div>
         <label class="btn block" style="border:1.5px dashed var(--border-strong);box-shadow:none;margin-top:10px">${ic('file')} 📊 ارفع أوردرات بشيت إكسيل (تراجعها وتعدّلها قبل الإرسال)
           <input type="file" id="waXls" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden></label>
+        <button class="btn block" id="waRecent" style="margin-top:10px">🗑️ أوردرات اتضافت (مراجعة ومسح)</button>
         <div class="tiny" style="margin-top:4px">أي شيت فيه أعمدة: الاسم، الموبايل، العنوان، المحافظة، المنطقة، المبلغ (المنتج والملاحظات اختياري). كل صف بيتحوّل أوردر تعدّله وبعدين تبعته لحازم.</div>
       </div>
       <button class="btn primary block" id="waGo">✨ طلّع الأوردرات</button>
@@ -155,6 +156,7 @@ async function openWaOrders(opts = {}) {
     $$('[data-rm]', sh.el).forEach(b => b.onclick = () => { imgs.splice(b.dataset.rm, 1); $('#waImgs', sh.el).dispatchEvent(new Event('change')); });
     e.target.value = '';
   };
+  $('#waRecent', sh.el).onclick = () => openRecentOrders();
   $('#waXls', sh.el).onchange = async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
