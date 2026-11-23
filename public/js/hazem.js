@@ -90,14 +90,31 @@ const Hazem = {
     try { return JSON.parse(t); } catch { return null; }
   },
 
+  // The portal's login form carries a one-time CSRF token tied to the session cookie; a POST without it is answered with
+  // "انتهت صلاحية النموذج" (form expired), which used to look like a wrong password. Fetch the form first, send its hidden fields back.
+  async _loginForm() {
+    const g = await this._request('login.php');
+    if (!this.isLoginPage(g.text)) return null;                              // no form: the session is already logged in
+    const hid = n => { const m = g.text.match(new RegExp(`<input[^>]*name=["']${n}["'][^>]*>`, 'i')); const v = m && m[0].match(/value=["']([^"']*)["']/i); return v ? v[1] : ''; };
+    return { csrf_token: hid('csrf_token'), return_to: hid('return_to') || '/admin-area/index.php', lang: hid('lang') || 'ar' };
+  },
   async login(email, password) {
-    const r = await this.request('login.php', {
-      method: 'POST', ajax: true,
-      form: { location: '', email, password, authorize: '1', ajax_login: '1' },
-    });
     let data = null;
-    try { data = JSON.parse(r.text.replace(/^﻿/, '').trim()); } catch {}
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let hidden = {};
+      try { const f = await this._loginForm(); if (f === null) { this.creds = { email, password }; this._loginAt = Date.now(); return true; } hidden = f; } catch {}
+      const r = await this.request('login.php', {
+        method: 'POST', ajax: true,
+        form: { location: '', return_to: hidden.return_to || '', lang: hidden.lang || 'ar', ...(hidden.csrf_token ? { csrf_token: hidden.csrf_token } : {}), email, password, authorize: '1', ajax_login: '1' },
+      });
+      data = null;
+      try { data = JSON.parse(r.text.replace(/^\ufeff/, '').trim()); } catch {}
+      // token expired between fetching the form and posting it: get a fresh form once more
+      if (data && data.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(data.message || '')) && attempt === 0) continue;
+      break;
+    }
     if (!data) throw new Error('تعذر الاتصال بموقع الشحن');
+    if (data.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(data.message || ''))) throw new Error('حازم رفض نموذج الدخول (انتهت صلاحيته). جرّب تاني بعد لحظات — بياناتك ما اتغيّرتش.');
     if (data.type === 'failed') {
       // The portal says which one is wrong ("User Not Found" / a password message) — tell the user exactly that.
       const pm = String(data.message || '');
