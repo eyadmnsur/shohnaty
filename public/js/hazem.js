@@ -34,6 +34,8 @@ const Hazem = {
   async request(path, opts = {}) {
     const get = (opts.method || 'GET') === 'GET';
     if (this._lockedUntil > Date.now() && !/^login\.php/.test(path)) throw this.lockedError();
+    // While a login is running nothing else may touch the portal: a parallel page would start a new session and void the login form's token.
+    if (this._loginP && !/^login\.php/.test(path)) { try { await this._loginP; } catch {} }
     const key = get ? path : null;
     if (key) { const c = this._cache.get(key); if (c && Date.now() - c.t < 20000) return { ...c.r }; }
     if (!get) this._cache.clear();
@@ -98,10 +100,21 @@ const Hazem = {
     const hid = n => { const m = g.text.match(new RegExp(`<input[^>]*name=["']${n}["'][^>]*>`, 'i')); const v = m && m[0].match(/value=["']([^"']*)["']/i); return v ? v[1] : ''; };
     return { csrf_token: hid('csrf_token'), return_to: hid('return_to') || '/admin-area/index.php', lang: hid('lang') || 'ar' };
   },
+  // Drops the portal's session cookie(s) on this device so the next page starts a brand-new session (and a brand-new token).
+  async _freshSession() {
+    try {
+      const C = window.Capacitor?.Plugins?.CapacitorCookies;
+      if (C) { await C.clearCookies({ url: HH_ORIGIN }); for (const k of ['PHPSESSID', 'adminId']) { try { await C.deleteCookie({ url: HH_ORIGIN, key: k }); } catch {} } }
+    } catch {}
+    try { for (const k of ['PHPSESSID']) document.cookie = `${k}=; Max-Age=0; path=/`; } catch {}
+    this._cache.clear();
+  },
   async login(email, password) {
-    let data = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      let hidden = {};
+    let data = null, hidden = {};
+    const isExpired = d => d && d.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(d.message || ''));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) { await this._freshSession(); await new Promise(r => setTimeout(r, 400 * attempt)); }   // retries start from a clean session
+      hidden = {};
       try { const f = await this._loginForm(); if (f === null) { this.creds = { email, password }; this._loginAt = Date.now(); return true; } hidden = f; } catch {}
       const r = await this.request('login.php', {
         method: 'POST', ajax: true,
@@ -109,12 +122,11 @@ const Hazem = {
       });
       data = null;
       try { data = JSON.parse(r.text.replace(/^\ufeff/, '').trim()); } catch {}
-      // token expired between fetching the form and posting it: get a fresh form once more
-      if (data && data.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(data.message || '')) && attempt === 0) continue;
+      if (isExpired(data) && attempt < 2) continue;
       break;
     }
     if (!data) throw new Error('تعذر الاتصال بموقع الشحن');
-    if (data.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(data.message || ''))) throw new Error('حازم رفض نموذج الدخول (انتهت صلاحيته). جرّب تاني بعد لحظات — بياناتك ما اتغيّرتش.');
+    if (data.type === 'failed' && /انتهت صلاحية|expired|csrf/i.test(String(data.message || ''))) throw new Error(`حازم رفض نموذج الدخول (انتهت صلاحيته) بعد 3 محاولات بجلسة جديدة [رمز:${hidden.csrf_token ? 'موجود' : 'مفقود'}]. بياناتك ما اتغيّرتش — جرّب تاني بعد لحظات.`);
     if (data.type === 'failed') {
       // The portal says which one is wrong ("User Not Found" / a password message) — tell the user exactly that.
       const pm = String(data.message || '');
@@ -134,7 +146,7 @@ const Hazem = {
       const adminId = cookies.adminId || (document.cookie.match(/adminId=(\d+)/) || [])[1];
       let token = await Store.get('device_token');
       if (!token) { token = String(Date.now()) + Math.floor(Math.random() * 1e9); await Store.set('device_token', token); }
-      if (adminId) await this.request('add_user_token.php', { method: 'POST', ajax: true, form: { adminId, token, device: 'android', location: '' } });
+      if (adminId) await this._request('add_user_token.php', { method: 'POST', ajax: true, form: { adminId, token, device: 'android', location: '' } });
     } catch {}
     this.creds = { email, password };
     this._loginAt = Date.now(); this._lockedUntil = 0; this._cache.clear();
